@@ -146,7 +146,28 @@ sub get_variables($$) {
  
   return \%v;
 }
+##
+## get_variables -- return a hash ref to SHOW GLOBAL VARIABLES output
+##
+## $dbh -- a non-null database handle, as returned from get_connection()
+##
+sub get_variablesByName($$) {
+  my $dbh = shift;
+  my $variableName = shift;
+  #my $debug = shift;
+  my $v;
+  my $cmd = "show variables like '$variableName'";
 
+  my $sth = $dbh->prepare($cmd);
+  $sth->execute();
+  while (my $ref = $sth->fetchrow_hashref()) {
+    my $n = $ref->{'Variable_name'};
+    $v = $ref->{'Value'};
+  }
+  
+ 
+  return \$v;
+}
 
 ##
 ## get_slave_status -- return a hash ref to SHOW SLAVE STATUS output
