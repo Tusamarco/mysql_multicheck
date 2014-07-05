@@ -116,6 +116,7 @@ $Param->{sysstats}   = 0;
 $Param->{sysstatsinit}   = 0;
 $Param->{doGraphs}   = 0;
 $Param->{processlist} = 0;
+$Param->{stattfile} = '';
 #$Param->{outfile};
 
 # ============================================================================
@@ -209,18 +210,21 @@ if(defined $Param->{html}){
 my $SPACER = "    ";
 
 
-if( defined $Param->{outfile}){
+if( defined $Param->{outfile}
+   && $Param->{headers} == 0
+   ){
     my $fullname = $Param->{outfile};
     my $filename = "sysstat_";
     my $volume;
     my $directories;
     my $file;
     ($volume, $directories, $file) = File::Spec->splitpath($fullname);
+    $Param->{stattfile} = $directories.$filename.$file;
 
     #my $basename = basename($fullname, my @suffixlist);
     #my $dirname  = dirname($fullname);    
     
-    
+       
     if( $Param->{wrmethod} == 0){
 
          open  $FILEOUT , '>>', $Param->{outfile};
@@ -248,6 +252,16 @@ if( defined $Param->{outfile}){
         #if (open $$FILEOUT, '>', $Param->{outfile}){
         #}
     }
+}
+else{
+    my $volume;
+    my $directories;
+    my $file;
+    my $filename = "sysstat_";
+
+    ($volume, $directories, $file) = File::Spec->splitpath($Param->{outfile});
+    $Param->{stattfile} = $directories.$filename.$file;
+
 }
 
 # ============================================================================
@@ -974,6 +988,7 @@ sub print_report_column(){
     }
    
     print $header."\n";
+    
     if ($Param->{creategnuplot} == 1)
     {
         my @returnvalues = GnuPlotGenerator($Param,$headerMap);
@@ -981,6 +996,11 @@ sub print_report_column(){
 	    print $returnvalues[0];
 	    print $returnvalues[1];
 	}
+    }
+
+    if ($Param->{sysstats} == 1)
+    {
+        PrintSystatGnufile();
     }
 
 
@@ -2521,10 +2541,10 @@ sub SysStats($$$$)
         memstats  => 1,
         pgswstats => 1,
         netstats  => 1,
-        sockstats => 1,
+        sockstats => 0,
         diskstats => 1,
-        diskusage => 0,
-        loadavg   => 1,
+        diskusage => 1,
+        loadavg   => 0,
         filestats => 0,
         processes => 0, );
     #sleep(1);
@@ -2539,36 +2559,30 @@ sub SysStats($$$$)
     $systatHeader = "execution_date,execution_time";
     $systatdata = $CurrentDate.",".$CurrentTime;
      
-    foreach my $key (sort keys %{$stat->cpustats})
-    {
-        $systatHeader = $systatHeader.",user_$key,nice_$key,system_$key,idle_$key,ioWait_$key,total_$key";
-        $systatdata = $systatdata
-	.",".$stat->cpustats->{$key}->{user}
-	.",".$stat->cpustats->{$key}->{nice}
-	.",".$stat->cpustats->{$key}->{system}
-	.",".$stat->cpustats->{$key}->{idle}
-	.",".$stat->cpustats->{$key}->{iowait}
-	.",".$stat->cpustats->{$key}->{total};
     
+    #
+    my @StatsToRead = ("netstats","diskstats","diskusage","cpustats");
+    
+    foreach my $mainkey (sort @StatsToRead ){
+        foreach my $key (sort keys %{$stat->{$mainkey}})
+        {   #print "$mainkey $key \n";
+            foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
+            $systatHeader = $systatHeader.",${subkey}_${key}";
+            $systatdata = $systatdata
+            .",".$stat->{$mainkey}->{$key}->{$subkey};
+            }
+        }
     }
+
+    @StatsToRead = ("memstats","pgswstats");
     
-      
-    $systatHeader = $systatHeader.",memused,memfree,memusedper,memtotal,mem_buffers,mem_cached,mem_realfree,mem_realfreeper,mem_swapused,mem_swapfree,mem_swapusedper,mem_swaptotal,mem_swapcached,mem_active,mem_inactive,mem_dirty";
-    $systatdata = $systatdata.",".$stat->memstats->{memused}.",".$stat->memstats->{memfree}.",".$stat->memstats->{memusedper}.",".$stat->memstats->{memtotal}.",";
-    $systatdata = $systatdata.$stat->memstats->{buffers}.",".$stat->memstats->{cached}.",".$stat->memstats->{realfree}.",".$stat->memstats->{realfreeper}.",";
-    $systatdata = $systatdata.$stat->memstats->{swapused}.",".$stat->memstats->{swapfree}.",".$stat->memstats->{swapusedper}.",".$stat->memstats->{swaptotal}.",";
-    $systatdata = $systatdata.$stat->memstats->{swapcached}.",".$stat->memstats->{active}.",".$stat->memstats->{inactive}.",";
-    $systatdata = $systatdata.$stat->memstats->{dirty};
-    
-    foreach my $key (sort keys %{$stat->cpustats})
-    {
-	my $str = substr($key,0,2);
-	if (substr($key,0,2) eq "sd")
-	{
-	    $systatHeader = $systatHeader.",disk_major_$key,disk_minor_$key,disk_rdreq_$key,disk_rdbyt_$key,disk_wrtreq_$key,disk_wrtbyt_$key,disk_ttreq_$key,disk_ttbyt_$key";
-	    $systatdata = $systatdata.",".$stat->diskstats->{$key}->{major}.",".$stat->diskstats->{$key}->{minor}.",".$stat->diskstats->{$key}->{rdreq}.",".$stat->diskstats->{$key}->{rdbyt};
-            $systatdata = $systatdata.",".$stat->diskstats->{$key}->{wrtreq}.",".$stat->diskstats->{$key}->{wrtbyt}.",".$stat->diskstats->{$key}->{ttreq}.",".$stat->diskstats->{$key}->{ttbyt};
-	}
+    foreach my $mainkey (sort @StatsToRead ){
+        foreach my $key (sort keys %{$stat->{$mainkey}})
+        {   #print "$mainkey $key \n";
+            $systatHeader = $systatHeader.",${key}";
+            $systatdata = $systatdata
+            .",".$stat->{$mainkey}->{$key};
+        }
     }
 
     if ($Param->{sysstatsinit} eq "0" && $Param->{sysstats} eq "1"){
@@ -2995,6 +3009,206 @@ sub PrintGnufile($$){
     return @returnvalues;
 }
 
+sub PrintSystatGnufile(){
+    
+    my $awkposition ="";
+    my $gnuconf="";
+    my @returnvalues;
+    my $relativePosition =2;
+
+    my ($CurrentDate,$CurrentTime);
+    
+
+    my $lxs = Sys::Statistics::Linux->new(
+	sysinfo   => 0,
+        cpustats  => 1,
+        procstats => 1,
+        memstats  => 1,
+        pgswstats => 1,
+        netstats  => 1,
+        sockstats => 0,
+        diskstats => 1,
+        diskusage => 1,
+        loadavg   => 0,
+        filestats => 0,
+        processes => 0, );
+    #sleep(1);
+    my $stat = $lxs->get;
+    #my %cpu  = $stat->cpustats;
+    #my %disk = $stat->diskstats;
+    
+    my $position = 3; 
+    
+    #
+    my @StatsToRead = ("netstats","diskstats","cpustats","diskusage");
+    
+    foreach my $mainkey (sort @StatsToRead ){
+        $relativePosition =2;
+        my $awkpositionLocal ="";
+        my $plotstring="" ;
+        
+        foreach my $key (sort keys %{$stat->{$mainkey}})
+        {   #print "$mainkey $key \n";
+            foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
+                   
+                if($position > 2)
+                {
+                    if($awkpositionLocal eq "")
+                    {
+                        $awkpositionLocal = "\$".$position;
+                    }
+                    else
+                    {
+                        $awkpositionLocal = $awkpositionLocal.",\$".$position;
+                    }
+                }
+                if ($plotstring eq "")
+                {
+                    $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                }
+                else
+                {
+                    $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                }
+                $position++ ;
+            }
+        }
+        if($Param->{debug} >0 ){
+	    print "\n\n#----------------$mainkey--------------------\n";
+	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+	}
+	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+        $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring);
+    }
+
+    @StatsToRead = ("memstats","pgswstats");
+    
+    foreach my $mainkey (sort @StatsToRead ){
+        $relativePosition =2;
+        my $awkpositionLocal ="";
+        my $plotstring="" ;
+
+        foreach my $key (sort keys %{$stat->{$mainkey}})
+        {   #print "$mainkey $key \n";
+                   
+                if($position > 2)
+                {
+                    if($awkpositionLocal eq "")
+                    {
+                        $awkpositionLocal = "\$".$position;
+                    }
+                    else
+                    {
+                        $awkpositionLocal = $awkpositionLocal.",\$".$position;
+                    }
+                }
+                if ($plotstring eq "")
+                {
+                    $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                }
+                else
+                {
+                    $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                }
+                ++$position ;
+        }
+        if($Param->{debug} >0 ){
+	    print "\n\n#----------------$mainkey--------------------\n";
+	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+	}
+	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+        $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring);
+
+    }
+    print "\n\n ----------------------------------- STATISTICS -----------------------------\n";
+    
+    print $awkposition;
+    print $gnuconf;
+}
+
+sub GnuPlotConfStats($$){
+    my ($mainkey, $plotstring, $gnuconf);
+    $mainkey = shift;
+    $plotstring = shift;
+    
+    if( $mainkey ne "" &&  $plotstring ne "")
+    {
+	
+	$gnuconf=$gnuconf."\n#------------$mainkey------------------------\n";
+	$gnuconf=$gnuconf."reset \n";
+	$gnuconf=$gnuconf."set title \"".$mainkey."\"\n";
+	$gnuconf=$gnuconf."set xlabel \"time\"\n";
+	$gnuconf=$gnuconf."set ylabel \"instances\"\n";
+	$gnuconf=$gnuconf."set datafile separator \" \"\n\n";
+	$gnuconf=$gnuconf."set timefmt \"%Y-%m-%d %H:%M:%S\"\n";
+	$gnuconf=$gnuconf."#set logscale # turn on double logarithmic plotting\n";
+	$gnuconf=$gnuconf."#set logscale y # for y-axis only\n";
+	$gnuconf=$gnuconf."#set logscale x\n";
+	$gnuconf=$gnuconf."#set xdtics 24\n\n";
+	$gnuconf=$gnuconf."set autoscale xfixmin\n";
+	$gnuconf=$gnuconf."set autoscale xfixmax\n";
+	$gnuconf=$gnuconf."set xrange [0:]\n";
+	$gnuconf=$gnuconf."set yrange [1:]\n\n";
+            
+	$gnuconf=$gnuconf."set lmargin at screen 0.10\n";
+	$gnuconf=$gnuconf."set rmargin at screen 0.90\n";
+	$gnuconf=$gnuconf."set tmargin at screen 0.91\n";
+
+        $gnuconf=$gnuconf."set grid\n";
+	$gnuconf=$gnuconf."set border 1\n";
+	$gnuconf=$gnuconf."set xdata time\n";
+	$gnuconf=$gnuconf."set key autotitle columnhead\n\n";
+
+        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"arial:name 6:size\"\n";
+        $gnuconf=$gnuconf."#set terminal x11 size 1149,861\n";
+        $gnuconf=$gnuconf."set output \"".$mainkey.".png\"\n\n";
+
+	$gnuconf=$gnuconf."set auto x\n";
+	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
+	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq \n";
+        $gnuconf=$gnuconf."set mxtics 4\n";
+	$gnuconf=$gnuconf."set ytics\n";
+	$gnuconf=$gnuconf."set mytics 5\n";
+	$gnuconf=$gnuconf."set termoption font \"arial:name 10:size\"\n\n";
+        $gnuconf=$gnuconf."set style line 1 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#113F8C\"\n";
+        $gnuconf=$gnuconf."set style line 2 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#61AE24\"\n";
+        $gnuconf=$gnuconf."set style line 3 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D70060\"\n";
+        $gnuconf=$gnuconf."set style line 4 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#616161\"\n";
+        $gnuconf=$gnuconf."set style line 5 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#01A4A4\"\n";
+        $gnuconf=$gnuconf."set style line 6 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D0D102\"\n";
+        $gnuconf=$gnuconf."set style line 7 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#E54028\"\n";
+        $gnuconf=$gnuconf."set style line 8 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#00A1CB\"\n";
+        $gnuconf=$gnuconf."set style line 9 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#32742C\"\n";
+        $gnuconf=$gnuconf."set style line 10 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#F18D05\"\n";
+        $gnuconf=$gnuconf."set style line 11 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#709DEB\"\n";
+        $gnuconf=$gnuconf."set style line 12 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#99F553\"\n"; 
+        $gnuconf=$gnuconf."set style line 13 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#9F0649\"\n";
+        $gnuconf=$gnuconf."set style line 14 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#C9BCC2\"\n";
+        $gnuconf=$gnuconf."set style line 15 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#20DEDE\"\n";
+        $gnuconf=$gnuconf."set style line 16 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#A8A809\"\n";
+        $gnuconf=$gnuconf."set style line 17 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#861706\"\n";
+        $gnuconf=$gnuconf."set style line 18 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#488797\"\n";
+        $gnuconf=$gnuconf."set style line 19 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#25721C\"\n";
+        $gnuconf=$gnuconf."set style line 20 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#BD8128\"\n";
+        
+	
+	$gnuconf=$gnuconf.$plotstring."\n\n";
+	if($Param->{debug} >0 ){
+	    print $gnuconf;
+	}
+
+            
+
+
+	
+    }
+   
+    
+    #print $plotstring;
+    return $gnuconf;
+}
+
+
 ######################################################################
 ##
 ##  ok, now make it work.
@@ -3018,6 +3232,11 @@ $Param->{mysqlversion} = substr($variables->{'version'},0,3 );
 
 $MysqlIndicatorContainer = initIndicators($Param,$status);
 
+if ($Param->{headers} > 0){
+    print_report_column();
+    exit(0);
+}
+
 
 my $innodb_status = get_innodb_status($dbh);
 
@@ -3025,7 +3244,7 @@ my $innodb_check_method1 = 0;
 my $innodb_check_method2 ;
 
     SWITCH: {
-	if ($innodbMethod == 1) { $innodb_check_method1=analise_innodb_Status_method1($innodb_status);; last SWITCH; }
+	if ($innodbMethod == 1) { $innodb_check_method1=analise_innodb_Status_method1($innodb_status); last SWITCH; }
 	if ($innodbMethod == 2) { $innodb_check_method2=analise_innodb_Status_method2($innodb_status); last SWITCH;  }
 	if ($innodbMethod == 3) { $innodb_check_method1=analise_innodb_Status_method1($innodb_status);
 				 $innodb_check_method2=analise_innodb_Status_method2($innodb_status);
@@ -3041,10 +3260,6 @@ $status->{'is_slave'} = $is_slave?"ON":"OFF";
 #Prepare for printing file out
 print_report_header();
 
-if ($Param->{headers} > 0){
-    print_report_column();
-    exit(0);
-}
 
 #if ($Param->{doGraphs} > 0){
 #    GnuPlotGenerator($Param);
