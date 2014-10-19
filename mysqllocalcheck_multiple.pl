@@ -2856,6 +2856,7 @@ sub GnuPlotGenerator($$){
 ##
 ##  Print the file definition
 ##
+
 sub PrintGnufile($$){
     my $gnuparam = shift;
     my $HeadersMap = shift;
@@ -2864,9 +2865,12 @@ sub PrintGnufile($$){
     my $gnuconf="";
     my @returnvalues;
     my $relativePosition =2;
+    my $prePlotstring ="" ;
     
     foreach my $key2 (sort keys %{$gnuparam})
     {
+       
+       
        if ($key2 eq "yaxis"
            || $key2 eq "xaxis")
        {
@@ -2874,6 +2878,11 @@ sub PrintGnufile($$){
        }
        else
        {
+          if($key2 eq "y2axis"){
+            $plotstring = "set y2label \"$gnuparam->{$key2}\" \nset y2range [0:] \nset y2tics \n".$plotstring;
+            next;
+           }
+
         
             my $position = 0;
             if(defined $HeadersMap->{$key2} && $HeadersMap->{$key2} ne "")
@@ -2892,28 +2901,47 @@ sub PrintGnufile($$){
                 }
             }
             
-            if($position > 0 && $gnuparam->{$key2} eq "lines")
+            my @gnuparamValueArray;
+            my $chartType = "";
+            my $chartOptions ="";
+            
+            if(defined $gnuparam->{$key2}){
+                 @gnuparamValueArray=split(',',$gnuparam->{$key2});
+            }
+            
+            if($#gnuparamValueArray > 0){
+                $chartType = $gnuparamValueArray[0];
+                if($#gnuparamValueArray > 1){
+                    $chartOptions = "title \"$gnuparamValueArray[1]\" "};
+                if($#gnuparamValueArray == 2){
+                    $chartOptions = $chartOptions." ".$gnuparamValueArray[2]};
+            }
+            else{
+                $chartType =  $gnuparam->{$key2};
+            }
+            
+            if($position > 0 &&  $chartType eq "lines")
             {        
                 #plot "Connections.csv" u 1:($3)  w l ,
                 if ($plotstring eq "")
                 {
-                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions w l ls ".($relativePosition-1);
                 }
                 else
                 {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions w l ls ".($relativePosition-1);
                 }
             }
-            elsif($position > 0 && $gnuparam->{$key2} eq "histograms")
+            elsif($position > 0 &&  $chartType eq "boxes")
             {
                 #plot "Connections.csv" u 1:($3)  w l ,
                 if ($plotstring eq "")
                 {
-                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:($3)  w histogram ";
+                    $plotstring=$prePlotstring."set boxwidth 50. absolute \nset style fill solid 1.00 border lt -1\n plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions w boxes lc rgb \"gray\" ";
                 }
                 else
                 {
-                    $plotstring=", \"".$gnuparam->{title}.".csv\" u 1:($3)  w histogram ";
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions  w boxes lc rgb \"gray\"";
                 }
             }
             
@@ -3165,6 +3193,7 @@ sub GnuPlotConfStats($$){
 
 	$gnuconf=$gnuconf."set auto x\n";
 	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
+        $gnuconf=$gnuconf."set format y \"%s\"\n";
 	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq \n";
         $gnuconf=$gnuconf."set mxtics 4\n";
 	$gnuconf=$gnuconf."set ytics\n";
@@ -3528,7 +3557,7 @@ sub debugEnv{
 sub load_statusparameters{
     
 $baseSP = "execution_time";
-$baseSP = $baseSP.",aborted_clients,aborted_connects,bytes_received,bytes_sent,compression,connections,max_used_connections,created_tmp_disk_tables,created_tmp_files";
+$baseSP = $baseSP.",aborted_clients,aborted_connects,bytes_received,bytes_sent,compression,connections,max_used_connections|0,created_tmp_disk_tables,created_tmp_files";
 $baseSP = $baseSP.",created_tmp_tables,delayed_errors,delayed_insert_threads,delayed_writes,not_flushed_delayed_rows";
 ##$baseSP = $baseSP.",Slow_launch_threads,Slow_queries,Sort_merge_passes,Sort_range,Sort_rows,Sort_scan,Table_locks_immediate,Table_locks_waited";
 ##$baseSP = $baseSP.",Tc_log_max_pages_used,Tc_log_page_size,Tc_log_page_waits";
@@ -3557,8 +3586,8 @@ $baseSP = $baseSP.",threads_cached|0,threads_connected|0,threads_created,threads
 #=======================================
 $baseSP = $baseSP.",wsrep_last_committed,wsrep_replicated,wsrep_replicated_bytes,wsrep_received,wsrep_received_bytes,wsrep_local_commits,wsrep_local_cert_failures,wsrep_local_bf_aborts";
 $baseSP = $baseSP.",wsrep_local_replays,wsrep_local_send_queue,wsrep_local_send_queue_avg,wsrep_local_recv_queue,wsrep_local_recv_queue_avg,wsrep_flow_control_paused";
-$baseSP = $baseSP.",wsrep_flow_control_sent,wsrep_flow_control_recv,wsrep_cert_deps_distance,wsrep_apply_oooe,wsrep_apply_oool,wsrep_apply_window,wsrep_commit_oooe";
-$baseSP = $baseSP.",wsrep_commit_oool,wsrep_commit_window,wsrep_local_state,wsrep_cert_index_size,wsrep_cluster_conf_id,wsrep_cluster_size";
+$baseSP = $baseSP.",wsrep_flow_control_sent,wsrep_flow_control_recv,wsrep_cert_deps_distance|0,wsrep_apply_oooe,wsrep_apply_oool,wsrep_apply_window|0,wsrep_commit_oooe";
+$baseSP = $baseSP.",wsrep_commit_oool,wsrep_commit_window|0,wsrep_local_state,wsrep_cert_index_size,wsrep_cluster_conf_id,wsrep_cluster_size";
 
 
 
