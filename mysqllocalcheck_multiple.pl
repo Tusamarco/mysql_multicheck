@@ -2937,7 +2937,7 @@ sub PrintGnufile($$){
                 #plot "Connections.csv" u 1:($3)  w l ,
                 if ($plotstring eq "")
                 {
-                    $plotstring=$prePlotstring."set boxwidth 50. absolute \nset style fill solid 1.00 border lt -1\n plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions w boxes lc rgb \"gray\" ";
+                    $plotstring=$prePlotstring."set boxwidth 50.50 absolute \nset style fill solid 10.00 border \n plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions w boxes lc rgb \"gray\" ";
                 }
                 else
                 {
