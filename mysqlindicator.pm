@@ -137,7 +137,7 @@ sub setValue{
     }
     
     if( defined  $self->{_max}){
-        if ($self->{_max} =~ /^\d+?$/) {
+        if ($self->{_max} =~ /^\d+?$/  && $self->{_current} =~ /^\d+?$/) {
            $self->{_max} = ($self->{_current} > $self->{_max})?$self->{_current}:$self->{_max};
         }
     }
@@ -147,7 +147,7 @@ sub setValue{
     }
     
     if( defined  $self->{_min}){
-        if ($self->{_min} =~ /^\d+?$/) {
+        if ($self->{_min} =~ /^\d+?$/  && $self->{_current} =~ /^\d+?$/)  {
             $self->{_min} = ($self->{_current} < $self->{_min})?$self->{_current}:$self->{_min};
         }
     }
