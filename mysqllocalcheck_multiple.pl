@@ -263,6 +263,27 @@ else{
     $Param->{stattfile} = $directories.$filename.$file;
 
 }
+if($Param->{sysstats} == 1){
+    my $mysqlpid = `pidof mysqld`;
+    $mysqlpid =~ s/\n//g;
+
+    $Param->{hwsys_stats} = Sys::Statistics::Linux->new(
+	sysinfo   => 0,
+        cpustats  => 1,
+        procstats => 1,
+        memstats  => 1,
+        pgswstats => 1,
+        netstats  => 1,
+        sockstats => 0,
+        diskstats => 1,
+        diskusage => 1,
+        loadavg   => 0,
+        filestats => 0,
+        processes => {init => 1,
+                      pids=> [$mysqlpid] }
+        );
+    
+}
 
 # ============================================================================
 # END Initialization
@@ -991,18 +1012,22 @@ sub print_report_column(){
     
     if ($Param->{creategnuplot} == 1)
     {
-        my @returnvalues = GnuPlotGenerator($Param,$headerMap);
+        my $dir = getcwd;
+        my $gnuplotfile = $dir.'/gnuplot_graphs.ini';
+        my $cfg = new ConfigIniSimple();
+        $cfg->read($gnuplotfile);
+
+        my @returnvalues = GnuPlotGenerator($Param,$headerMap,$cfg);
 	if(@returnvalues > 0){
 	    print $returnvalues[0];
 	    print $returnvalues[1];
 	}
+        if ($Param->{sysstats} == 1)
+        {
+            PrintSystatGnufile($cfg,$Param->{hwsys_stats});
+        }
+        
     }
-
-    if ($Param->{sysstats} == 1)
-    {
-        PrintSystatGnufile();
-    }
-
 
 }
 
@@ -2525,7 +2550,7 @@ sub analise_innodb_Status_method2($) {
 }
 
 
-sub SysStats($$$$)
+sub SysStats($$$$$)
 {
     my ($CurrentDate,$CurrentTime);
     
@@ -2533,20 +2558,26 @@ sub SysStats($$$$)
     $CurrentTime = shift; 
     $systatHeader=shift;
     $systatdata=shift;
+    my $lxs = shift;
+    my $mysqlpid = `pidof mysqld`;
+    $mysqlpid =~ s/\n//g;
 
-    my $lxs = Sys::Statistics::Linux->new(
-	sysinfo   => 0,
-        cpustats  => 1,
-        procstats => 1,
-        memstats  => 1,
-        pgswstats => 1,
-        netstats  => 1,
-        sockstats => 0,
-        diskstats => 1,
-        diskusage => 1,
-        loadavg   => 0,
-        filestats => 0,
-        processes => 0, );
+#    my $lxs = Sys::Statistics::Linux->new(
+#	sysinfo   => 0,
+#        cpustats  => 1,
+#        procstats => 1,
+#        memstats  => 1,
+#        pgswstats => 1,
+#        netstats  => 1,
+#        sockstats => 0,
+#        diskstats => 1,
+#        diskusage => 1,
+#        loadavg   => 0,
+#        filestats => 0,
+#        processes => {init => 1,
+#                      pids=> [$mysqlpid] }
+#        );
+
     #sleep(1);
     my $stat = $lxs->get;
     #my %cpu  = $stat->cpustats;
@@ -2566,10 +2597,19 @@ sub SysStats($$$$)
     foreach my $mainkey (sort @StatsToRead ){
         foreach my $key (sort keys %{$stat->{$mainkey}})
         {   #print "$mainkey $key \n";
-            foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
-            $systatHeader = $systatHeader.",${subkey}_${key}";
-            $systatdata = $systatdata
-            .",".$stat->{$mainkey}->{$key}->{$subkey};
+            if($key eq $mysqlpid
+               || $key eq "cpu"
+               || $key eq "eth0"
+               || $key eq "sda"
+               || $key eq "/dev/mapper/ubuntu-root"
+               ){
+                    foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
+                    $systatHeader = $systatHeader.",${subkey}_${key}";
+                    $systatdata = $systatdata
+                    .",".$stat->{$mainkey}->{$key}->{$subkey};
+                    }
+            }else{
+                next;
             }
         }
     }
@@ -2805,13 +2845,13 @@ sub check_users_state($$) {
 ##
 ##  Create Gnuplot graphs
 ##
-sub GnuPlotGenerator($$){
+sub GnuPlotGenerator($$$){
     my $Params = shift;
     my $HeadersMap = shift;
-    my $dir = getcwd;
-    my $gnuplotfile = $dir.'/gnuplot_graphs.ini';
-    my $cfg = new ConfigIniSimple();
-    $cfg->read($gnuplotfile);
+   # my $dir = getcwd;
+   # my $gnuplotfile = $dir.'/gnuplot_graphs.ini';
+    my $cfg = shift;
+    #$cfg->read($gnuplotfile);
     my @returnvaluesLocal;
     my $awkcommands;
     my $gnuplotcommands;
@@ -2832,22 +2872,29 @@ sub GnuPlotGenerator($$){
  #           print $key."\n";
             my $gnuparam = $cfg->{$key};
             $gnuparam->{title} = $key;
-            @returnvaluesLocal = PrintGnufile($gnuparam,$HeadersMap);
-            if(@returnvaluesLocal > 0)
-	    {
-		$awkcommands = $awkcommands . $returnvaluesLocal[0];
-		$gnuplotcommands = $gnuplotcommands . $returnvaluesLocal[1];
+            
+            if (substr($key,0,5) ne "Hwsys" ){
+                @returnvaluesLocal = PrintGnufile($gnuparam,$HeadersMap);
+                if(@returnvaluesLocal > 0)
+        	    {
+        		$awkcommands = $awkcommands . $returnvaluesLocal[0];
+        		$gnuplotcommands = $gnuplotcommands . $returnvaluesLocal[1];
 		
 		
-	    }
+        	    }
+            }
+            else{
+                print "";
+            }
 #            print "\n"."awk -F , '{print \$1,\$2,".$awkposition."}'".$Param->{outfile}." >> ".$key.".csv ;"
         }
     }
-    
+
     if($gnuplotcommands ne "" && $awkcommands ne ""){
 	$returnvalues[0] =$awkcommands;
 	$returnvalues[1] =$gnuplotcommands;
     }
+    
     return @returnvalues;
     
 }
@@ -3037,29 +3084,33 @@ sub PrintGnufile($$){
     return @returnvalues;
 }
 
-sub PrintSystatGnufile(){
-    
+sub PrintSystatGnufile($$){
+    my $cfg = shift;
+    my $lxs = shift;
     my $awkposition ="";
     my $gnuconf="";
     my @returnvalues;
     my $relativePosition =2;
 
     my ($CurrentDate,$CurrentTime);
-    
-
-    my $lxs = Sys::Statistics::Linux->new(
-	sysinfo   => 0,
-        cpustats  => 1,
-        procstats => 1,
-        memstats  => 1,
-        pgswstats => 1,
-        netstats  => 1,
-        sockstats => 0,
-        diskstats => 1,
-        diskusage => 1,
-        loadavg   => 0,
-        filestats => 0,
-        processes => 0, );
+    my $mysqlpid = `pidof mysqld`;
+    $mysqlpid =~ s/\n//g;
+#
+#    my $lxs = Sys::Statistics::Linux->new(
+#	sysinfo   => 0,
+#        cpustats  => 1,
+#        procstats => 1,
+#        memstats  => 1,
+#        pgswstats => 1,
+#        netstats  => 1,
+#        sockstats => 0,
+#        diskstats => 1,
+#        diskusage => 1,
+#        loadavg   => 0,
+#        filestats => 0,
+#        processes => {init => 1,
+#                      pids=> [$mysqlpid] }
+#        );
     #sleep(1);
     my $stat = $lxs->get;
     #my %cpu  = $stat->cpustats;
@@ -3068,7 +3119,7 @@ sub PrintSystatGnufile(){
     my $position = 3; 
     
     #
-    my @StatsToRead = ("netstats","diskstats","cpustats","diskusage");
+    my @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
     
     foreach my $mainkey (sort @StatsToRead ){
         $relativePosition =2;
@@ -3077,29 +3128,38 @@ sub PrintSystatGnufile(){
         
         foreach my $key (sort keys %{$stat->{$mainkey}})
         {   #print "$mainkey $key \n";
-            foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
-                   
-                if($position > 2)
-                {
-                    if($awkpositionLocal eq "")
+            if($key eq $mysqlpid
+               || $key eq "cpu"
+               || $key eq "eth0"
+               || $key eq "sda"
+               || $key eq "/dev/mapper/ubuntu-root"
+               ){
+                foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
+                       
+                    if($position > 2)
                     {
-                        $awkpositionLocal = "\$".$position;
+                        if($awkpositionLocal eq "")
+                        {
+                            $awkpositionLocal = "\$".$position;
+                        }
+                        else
+                        {
+                            $awkpositionLocal = $awkpositionLocal.",\$".$position;
+                        }
+                    }
+                    if ($plotstring eq "")
+                    {
+                        $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
                     }
                     else
                     {
-                        $awkpositionLocal = $awkpositionLocal.",\$".$position;
+                        $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
                     }
+                    $position++ ;
                 }
-                if ($plotstring eq "")
-                {
-                    $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
-                }
-                else
-                {
-                    $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
-                }
-                $position++ ;
-            }
+            }else{
+                    next;
+                } 
         }
         if($Param->{debug} >0 ){
 	    print "\n\n#----------------$mainkey--------------------\n";
@@ -3335,7 +3395,7 @@ my $iCountLoop = 0;
 	#$CurrentTime;
 	#$systatHeader="";
 	#$systatdata="";
-	SysStats($CurrentDate,$CurrentTime,$systatHeader,$systatdata);
+	SysStats($CurrentDate,$CurrentTime,$systatHeader,$systatdata,$Param->{hwsys_stats});
 	
     }
 
