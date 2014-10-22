@@ -117,6 +117,7 @@ $Param->{sysstatsinit}   = 0;
 $Param->{doGraphs}   = 0;
 $Param->{processlist} = 0;
 $Param->{stattfile} = '';
+$Param->{OS} = $^O;
 #$Param->{outfile};
 
 # ============================================================================
@@ -264,8 +265,17 @@ else{
 
 }
 if($Param->{sysstats} == 1){
-    my $mysqlpid = `pidof mysqld`;
-    $mysqlpid =~ s/\n//g;
+    my $mysqlpid;
+
+    if($Param->{"OS"} eq "linux"){
+        $mysqlpid = `pidof mysqld`;
+        $mysqlpid =~ s/\n//g;
+    }
+    elsif($Param->{"OS"} eq "MSWin32"){
+        my @procs = `tasklist`;
+        print "";
+    }
+
 
     $Param->{hwsys_stats} = Sys::Statistics::Linux->new(
 	sysinfo   => 0,
@@ -1024,7 +1034,7 @@ sub print_report_column(){
 	}
         if ($Param->{sysstats} == 1)
         {
-            PrintSystatGnufile($cfg,$Param->{hwsys_stats});
+            PrintSystatGnufile($cfg,$Param->{hwsys_stats},$cfg);
         }
         
     }
@@ -2559,8 +2569,15 @@ sub SysStats($$$$$)
     $systatHeader=shift;
     $systatdata=shift;
     my $lxs = shift;
-    my $mysqlpid = `pidof mysqld`;
-    $mysqlpid =~ s/\n//g;
+    my $mysqlpid;
+
+    if($Param->{"OS"} eq "linux"){
+        $mysqlpid = `pidof mysqld`;
+        $mysqlpid =~ s/\n//g;
+    }
+    elsif($Param->{"OS"} eq "MSWin32"){
+        my @procs = `tasklist`;
+    }
 
 #    my $lxs = Sys::Statistics::Linux->new(
 #	sysinfo   => 0,
@@ -3088,13 +3105,20 @@ sub PrintSystatGnufile($$){
     my $cfg = shift;
     my $lxs = shift;
     my $awkposition ="";
-    my $gnuconf="";
+    my $gnuconf=shift;
     my @returnvalues;
     my $relativePosition =2;
 
     my ($CurrentDate,$CurrentTime);
-    my $mysqlpid = `pidof mysqld`;
-    $mysqlpid =~ s/\n//g;
+    my $mysqlpid ;
+    
+    if($Param->{"OS"} eq "linux"){
+        $mysqlpid = `pidof mysqld`;
+        $mysqlpid =~ s/\n//g;
+    }
+    elsif($Param->{"OS"} eq "MSWin32"){
+        my @procs = `tasklist`;
+    }
 #
 #    my $lxs = Sys::Statistics::Linux->new(
 #	sysinfo   => 0,
@@ -3125,17 +3149,43 @@ sub PrintSystatGnufile($$){
         $relativePosition =2;
         my $awkpositionLocal ="";
         my $plotstring="" ;
+        my @filters = split(',',$cfg->{"Hwsys_".$mainkey}->{filter});
+        my $gnuplotConf;
+        my $processStats = 1;
+        my $processElementStats =1;
+        my $filterString = "";
+        my @itemAttribs;
         
         foreach my $key (sort keys %{$stat->{$mainkey}})
         {   #print "$mainkey $key \n";
-            if($key eq $mysqlpid
-               || $key eq "cpu"
-               || $key eq "eth0"
-               || $key eq "sda"
-               || $key eq "/dev/mapper/ubuntu-root"
-               ){
+            
+            foreach my $filterItem (sort @filters){
+                if($key eq $filterItem || $filterItem eq '*'){
+                    $processStats = 1;
+                    $filterString = $filterString."_".$filterItem;
+                    $gnuplotConf = $cfg->{"Hwsys_".$mainkey};
+                    last;
+                }
+                else{
+                    $processStats = 0;
+                }
+            }
+
+            
+            if($processStats == 1){
                 foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
-                       
+
+                    foreach my $cfgKey (sort keys %{$gnuplotConf}){
+                         if($subkey eq $cfgKey){
+                             $processElementStats = 1;
+                             @itemAttribs = split(',',$gnuplotConf->{$cfgKey});
+                             last;
+                         }
+                         else{
+                             $processElementStats = 0;
+                         }
+                     }
+
                     if($position > 2)
                     {
                         if($awkpositionLocal eq "")
@@ -3149,11 +3199,30 @@ sub PrintSystatGnufile($$){
                     }
                     if ($plotstring eq "")
                     {
-                        $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                        #print $#itemAttribs."   ".$itemAttribs[0];
+                        if($processElementStats == 1
+                           && $#itemAttribs >= 0
+                           && $itemAttribs[0] eq "line"){
+                            $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                        }
+                        elsif($processElementStats == 1 && $#itemAttribs >= 1) {
+                            $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.") title ". $itemAttribs[1]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
+                        }
+                        else{
+                            $relativePosition++;
+                        }
                     }
                     else
                     {
-                        $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                        if($processElementStats == 1 && $#itemAttribs >= 0 && $itemAttribs[0] eq "line"){
+                            $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                        }
+                        elsif($processElementStats == 1 && $#itemAttribs >= 1){
+                            $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.") title ". $itemAttribs[1]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
+                        }
+                        else{
+                            $relativePosition++;
+                        }
                     }
                     $position++ ;
                 }
@@ -3166,7 +3235,7 @@ sub PrintSystatGnufile($$){
 	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
 	}
 	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
-        $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring);
+        $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString);
     }
 
     @StatsToRead = ("memstats","pgswstats");
@@ -3205,7 +3274,7 @@ sub PrintSystatGnufile($$){
 	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
 	}
 	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
-        $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring);
+        $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,"");
 
     }
     print "\n\n ----------------------------------- STATISTICS -----------------------------\n";
@@ -3214,15 +3283,17 @@ sub PrintSystatGnufile($$){
     print $gnuconf;
 }
 
-sub GnuPlotConfStats($$){
+sub GnuPlotConfStats($$$){
     my ($mainkey, $plotstring, $gnuconf);
     $mainkey = shift;
     $plotstring = shift;
+    my $filterString = shift;
     
     if( $mainkey ne "" &&  $plotstring ne "")
     {
 	
 	$gnuconf=$gnuconf."\n#------------$mainkey------------------------\n";
+        $gnuconf=$gnuconf."\n#--FILTERED $filterString------\n";
 	$gnuconf=$gnuconf."reset \n";
 	$gnuconf=$gnuconf."set title \"".$mainkey."\"\n";
 	$gnuconf=$gnuconf."set xlabel \"time\"\n";
