@@ -3156,7 +3156,8 @@ sub PrintSystatGnufile($$){
     my $position = 3; 
     
     #
-    my @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
+    my @StatsToRead = ("netstats","diskstats","cpustats","diskusage");
+    #"processes"
     
     foreach my $mainkey (sort @StatsToRead ){
         $relativePosition =2;
@@ -3728,7 +3729,7 @@ $baseSP = $baseSP.",threads_cached|0,threads_connected|0,threads_created,threads
 $baseSP = $baseSP.",wsrep_last_committed,wsrep_replicated,wsrep_replicated_bytes,wsrep_received,wsrep_received_bytes,wsrep_local_commits,wsrep_local_cert_failures,wsrep_local_bf_aborts";
 $baseSP = $baseSP.",wsrep_local_replays,wsrep_local_send_queue,wsrep_local_send_queue_avg,wsrep_local_recv_queue,wsrep_local_recv_queue_avg,wsrep_flow_control_paused";
 $baseSP = $baseSP.",wsrep_flow_control_sent,wsrep_flow_control_recv,wsrep_cert_deps_distance|0,wsrep_apply_oooe,wsrep_apply_oool,wsrep_apply_window|0,wsrep_commit_oooe";
-$baseSP = $baseSP.",wsrep_commit_oool,wsrep_commit_window|0,wsrep_local_state,wsrep_cert_index_size,wsrep_cluster_conf_id,wsrep_cluster_size";
+$baseSP = $baseSP.",wsrep_commit_oool,wsrep_commit_window|0,wsrep_local_state,wsrep_cert_index_size,wsrep_cluster_conf_id,wsrep_cluster_size,wsrep_evs_repl_latency|0";
 
 
 
