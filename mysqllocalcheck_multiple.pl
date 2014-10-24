@@ -264,8 +264,12 @@ else{
     $Param->{stattfile} = $directories.$filename.$file;
 
 }
+if($Param->{"OS"} ne "linux"){
+    $Param->{sysstats} = 0;
+}
+
 if($Param->{sysstats} == 1){
-    my $mysqlpid;
+    my $mysqlpid=0;
 
     if($Param->{"OS"} eq "linux"){
         $mysqlpid = `pidof mysqld`;
@@ -276,7 +280,7 @@ if($Param->{sysstats} == 1){
         print "";
     }
 
-
+    if( $mysqlpid > 0){
     $Param->{hwsys_stats} = Sys::Statistics::Linux->new(
 	sysinfo   => 0,
         cpustats  => 1,
@@ -289,9 +293,27 @@ if($Param->{sysstats} == 1){
         diskusage => 1,
         loadavg   => 0,
         filestats => 0,
-        processes => {init => 1,
-                      pids=> [$mysqlpid] }
-        );
+        processes =>{init => 1, pids=> [$mysqlpid]}
+	);
+    }
+    else{
+    $Param->{hwsys_stats} = Sys::Statistics::Linux->new(
+	sysinfo   => 0,
+        cpustats  => 1,
+        procstats => 1,
+        memstats  => 1,
+        pgswstats => 1,
+        netstats  => 1,
+        sockstats => 0,
+        diskstats => 1,
+        diskusage => 1,
+        loadavg   => 0,
+        filestats => 0,
+        processes =>0
+	);
+	
+    }
+    
     
 }
 
@@ -2614,21 +2636,12 @@ sub SysStats($$$$$)
     foreach my $mainkey (sort @StatsToRead ){
         foreach my $key (sort keys %{$stat->{$mainkey}})
         {   #print "$mainkey $key \n";
-            if($key eq $mysqlpid
-               || $key eq "cpu"
-               || $key eq "eth0"
-               || $key eq "sda"
-               || $key eq "/dev/mapper/ubuntu-root"
-               ){
-                    foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
-                    $systatHeader = $systatHeader.",${subkey}_${key}";
-                    $systatdata = $systatdata
-                    .",".$stat->{$mainkey}->{$key}->{$subkey};
-                    }
-            }else{
-                next;
-            }
-        }
+	    foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
+		$systatHeader = $systatHeader.",${subkey}_${key}";
+		$systatdata = $systatdata
+		.",".$stat->{$mainkey}->{$key}->{$subkey};
+	    }
+	}
     }
 
     @StatsToRead = ("memstats","pgswstats");
@@ -3149,34 +3162,34 @@ sub PrintSystatGnufile($$){
         $relativePosition =2;
         my $awkpositionLocal ="";
         my $plotstring="" ;
-        my @filters = split(',',$cfg->{"Hwsys_".$mainkey}->{filter});
+        my @filters = defined $cfg->{"Hwsys_".$mainkey}?split(',',$cfg->{"Hwsys_".$mainkey}->{filter}):"na";
         my $gnuplotConf;
-        my $processStats = 1;
-        my $processElementStats =1;
+        my $processStats = 0;
+        my $processElementStats =0;
         my $filterString = "";
         my @itemAttribs;
-        
+        my $filterItemC="";
+	
         foreach my $key (sort keys %{$stat->{$mainkey}})
         {   #print "$mainkey $key \n";
-            
             foreach my $filterItem (sort @filters){
                 if($key eq $filterItem || $filterItem eq '*'){
                     $processStats = 1;
+                    $filterItemC = $filterItem;
                     $filterString = $filterString."_".$filterItem;
                     $gnuplotConf = $cfg->{"Hwsys_".$mainkey};
                     last;
                 }
                 else{
-                    $processStats = 0;
+                    $filterItemC="";  
                 }
             }
 
             
-            if($processStats == 1){
+        
                 foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
-
                     foreach my $cfgKey (sort keys %{$gnuplotConf}){
-                         if($subkey eq $cfgKey){
+                         if($filterItemC ne "" && $subkey eq $cfgKey){
                              $processElementStats = 1;
                              @itemAttribs = split(',',$gnuplotConf->{$cfgKey});
                              last;
@@ -3186,7 +3199,7 @@ sub PrintSystatGnufile($$){
                          }
                      }
 
-                    if($position > 2)
+                    if($position > 2 && $processElementStats == 1)
                     {
                         if($awkpositionLocal eq "")
                         {
@@ -3197,7 +3210,7 @@ sub PrintSystatGnufile($$){
                             $awkpositionLocal = $awkpositionLocal.",\$".$position;
                         }
                     }
-                    if ($plotstring eq "")
+                    if ($plotstring eq "" && $processElementStats == 1)
                     {
                         #print $#itemAttribs."   ".$itemAttribs[0];
                         if($processElementStats == 1
@@ -3212,7 +3225,7 @@ sub PrintSystatGnufile($$){
                             $relativePosition++;
                         }
                     }
-                    else
+                    elsif($processElementStats == 1)
                     {
                         if($processElementStats == 1 && $#itemAttribs >= 0 && $itemAttribs[0] eq "line"){
                             $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
@@ -3226,9 +3239,6 @@ sub PrintSystatGnufile($$){
                     }
                     $position++ ;
                 }
-            }else{
-                    next;
-                } 
         }
         if($Param->{debug} >0 ){
 	    print "\n\n#----------------$mainkey--------------------\n";
