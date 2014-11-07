@@ -2631,7 +2631,7 @@ sub SysStats($$$$$)
      
     
     #
-    my @StatsToRead = ("netstats","diskstats","diskusage","cpustats");
+    my @StatsToRead = ("netstats","diskstats","diskusage","cpustats","processes");
     
     foreach my $mainkey (sort @StatsToRead ){
         foreach my $key (sort keys %{$stat->{$mainkey}})
@@ -3156,7 +3156,7 @@ sub PrintSystatGnufile($$){
     my $position = 3; 
     
     #
-    my @StatsToRead = ("netstats","diskstats","cpustats","diskusage");
+    my @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
     #"processes"
     
     foreach my $mainkey (sort @StatsToRead ){
@@ -3669,6 +3669,10 @@ System Statistics
 if ENABLE [disable by default] will collect System statistics in a separate file with name as the one define for the outfile but with prefix sysstats_
 sysstats = 0 [default] disable
 sysstats = 1 Enable
+
+Security
+add user as:
+grant select, show databases, process,replication client,replication slave on *.* to user\@'ip' identified by xxx
 
 
 EOF
