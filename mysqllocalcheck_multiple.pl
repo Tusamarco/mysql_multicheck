@@ -3002,11 +3002,11 @@ sub PrintGnufile($$){
                 #plot "Connections.csv" u 1:($3)  w l ,
                 if ($plotstring eq "")
                 {
-                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions w l ls ".($relativePosition-1);
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition-1);
                 }
                 else
                 {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions w l ls ".($relativePosition-1);
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition-1);
                 }
             }
             elsif($position > 0 &&  $chartType eq "boxes")
@@ -3014,11 +3014,11 @@ sub PrintGnufile($$){
                 #plot "Connections.csv" u 1:($3)  w l ,
                 if ($plotstring eq "")
                 {
-                    $plotstring=$prePlotstring."set boxwidth 50.50 absolute \nset style fill solid 10.00 border \n plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions w boxes lc rgb \"gray\" ";
+                    $plotstring=$prePlotstring."set boxwidth 50.50 absolute \nset style fill solid 10.00 border \n plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w boxes lc rgb \"gray\" ";
                 }
                 else
                 {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++.") $chartOptions  w boxes lc rgb \"gray\"";
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions  w boxes lc rgb \"gray\"";
                 }
             }
             
@@ -3217,10 +3217,10 @@ sub PrintSystatGnufile($$){
                         if($processElementStats == 1
                            && $#itemAttribs >= 0
                            && $itemAttribs[0] eq "line"){
-                            $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                            $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w l ls ".($relativePosition-1);
                         }
                         elsif($processElementStats == 1 && $#itemAttribs >= 1) {
-                            $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.") title ". $itemAttribs[1]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
+                            $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") title ". $itemAttribs[1]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
                         }
                         else{
                             $relativePosition++;
@@ -3229,10 +3229,10 @@ sub PrintSystatGnufile($$){
                     elsif($processElementStats == 1)
                     {
                         if($processElementStats == 1 && $#itemAttribs >= 0 && $itemAttribs[0] eq "line"){
-                            $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                            $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w l ls ".($relativePosition-1);
                         }
                         elsif($processElementStats == 1 && $#itemAttribs >= 1){
-                            $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.") title ". $itemAttribs[1]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
+                            $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") title ". $itemAttribs[1]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
                         }
                         else{
                             $relativePosition++;
@@ -3272,11 +3272,11 @@ sub PrintSystatGnufile($$){
                 }
                 if ($plotstring eq "")
                 {
-                    $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                    $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w l ls ".($relativePosition-1);
                 }
                 else
                 {
-                    $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++.")  w l ls ".($relativePosition-1);
+                    $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w l ls ".($relativePosition-1);
                 }
                 ++$position ;
         }
