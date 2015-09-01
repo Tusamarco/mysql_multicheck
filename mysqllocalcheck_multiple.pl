@@ -1614,6 +1614,23 @@ sub check_innodb_pending_ops($) {
   return;
 }
 
+sub check_handlers($){
+    my $status    = shift;
+    my $Variables = "handler_commit,handler_delete,handler_prepare,handler_read_first,handler_read_key,handler_read_last,handler_read_next,handler_read_prev,handler_read_rnd,handler_read_rnd_next,handler_rollback,handler_update,handler_write";
+    
+     foreach my $key (sort split(',',$Variables)){
+	    my $indicator;
+	    my $value =0;
+            $indicator = $MysqlIndicatorContainer->{$key};
+            if (defined $indicator->{_relative} && $indicator->{_relative} ne ""){
+                $value = $indicator->{_relative};
+            }            
+	$finalreport =$finalreport.doPrint("$SPACER $key = $value",0,$finalreport,$genericStatus,$html);
+	
+     }
+
+}
+
 ##
 ## check_table_cache
 ##
@@ -3553,6 +3570,10 @@ my $iCountLoop = 0;
 	
 	check_tmp_disk_tables($status);
 	
+       	$finalreport =$finalreport.doPrint("$SPACER ================= Handlers Section ================",0,$finalreport,$genericStatus,$html);
+	check_handlers($status);
+
+        
 	$finalreport =$finalreport.doPrint("$SPACER ================= InnoDb Section ================",0,$finalreport,$genericStatus,$html);
 	check_innodb_poolstatus($status, $variables);
 	check_innodb_bufferpoolusage($status, $variables);

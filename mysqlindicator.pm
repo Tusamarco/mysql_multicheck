@@ -165,8 +165,12 @@ sub setValue{
         #my $aa =  ($self->{_current} - $self->{_previous});
         #print $aa."\n";
         #}
-        $self->{_relative} = ( $self->{_current} - $self->{_previous});
-        
+        if($self->{_current}  > 0){
+            $self->{_relative} = ( $self->{_current} - $self->{_previous});
+        }
+        else{
+            $self->{_relative} = $self->{_current};
+        }
     }
     else
     {
