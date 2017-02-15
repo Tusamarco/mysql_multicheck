@@ -27,14 +27,14 @@ use mysqlindicator;
 use Time::Local;
 use IO::Handle;
 use Math::BigInt;
-use commonFunctions;
-use commonDBFunctions;
 use commonPrintFormat;
 use Chart::Graph qw(&gnuplot);
 use strict;
 use warnings;
 use sigtrap;
 use Cwd;
+use commonDBFunctions;
+use commonFunctions;
 use ConfigIniSimple;
 use Scalar::Util qw(looks_like_number);
 
@@ -1831,12 +1831,23 @@ sub check_slave_running($) {
 
 sub check_inserts($) {
   my $status = shift;
+    
+    my $value =0;
+    my $indicator = $MysqlIndicatorContainer->{com_insert};
+    my $indicator2 =$MysqlIndicatorContainer->{com_insert_select};
+    
+    if (defined $indicator->{_relative} && $indicator->{_relative} ne ""){
+                $value = $indicator->{_relative};
+    }
+    if (defined $indicator2->{_relative} && $indicator2->{_relative} ne ""){
+                $value = $value + $indicator2->{_relative};
+    }
 
 
   my $eff = sprintf("%.2f",((($status->{'com_insert'} + $status->{'com_insert_select'}) / $status->{'queries'}) * 100));
   my $a_sum = sprintf("%.2f", $status->{'com_insert'} + $status->{'com_insert_select'} ); 
   
-  $finalreport =$finalreport.doPrint("$SPACER&green Server is performing Insert =($eff) of total | Insert = $a_sum  Total = $status->{'queries'}.",0,$finalreport,$genericStatus,$html);
+  $finalreport =$finalreport.doPrint("$SPACER&green Insert =($eff) of total | Insert Cur = $value  Total = $a_sum.",0,$finalreport,$genericStatus,$html);
   return;
 }
 
@@ -1848,13 +1859,23 @@ sub check_inserts($) {
 
 sub check_updates($) {
   my $status = shift;
-
+   
+    my $value =0;
+    my $indicator = $MysqlIndicatorContainer->{com_update};
+    my $indicator2 =$MysqlIndicatorContainer->{com_update_multi};
+    
+    if (defined $indicator->{_relative} && $indicator->{_relative} ne ""){
+                $value = $indicator->{_relative};
+    }
+    if (defined $indicator2->{_relative} && $indicator2->{_relative} ne ""){
+                $value = $value + $indicator2->{_relative};
+    }
 
   my $eff = sprintf("%.2f",((($status->{'com_update'} + $status->{'com_update_multi'}) / $status->{'queries'}) * 100));
 
   my $a_sum = sprintf("%.2f", $status->{'com_update'} + $status->{'com_update_multi'} );
   
-  $finalreport =$finalreport.doPrint("$SPACER&green Server is performing Update  =($eff) of total | Updates = $a_sum  Total = $status->{'queries'}.",0,$finalreport,$genericStatus,$html);
+  $finalreport =$finalreport.doPrint("$SPACER&green Update  =($eff) of total | Updates Cur = $value  Total = $a_sum.",0,$finalreport,$genericStatus,$html);
   return;
 }
 
@@ -1867,11 +1888,17 @@ sub check_updates($) {
 sub check_replace($) {
   my $status = shift;
 
-
+   my $value =0;
+    my $indicator = $MysqlIndicatorContainer->{com_replace};
+    
+    if (defined $indicator->{_relative} && $indicator->{_relative} ne ""){
+                $value = $indicator->{_relative};
+    }
+    
   my $eff = sprintf("%.2f", ((($status->{'com_replace'} ) / $status->{'queries'}) * 100));
 
   
-  $finalreport =$finalreport.doPrint("$SPACER&green Server is performing Replace  =($eff) of total | Replace = $status->{'com_replace'}  Total = $status->{'queries'}.",0,$finalreport,$genericStatus,$html);
+  $finalreport =$finalreport.doPrint("$SPACER&green Replace  =($eff) of total | Replace Curr = $value Total = $status->{'com_replace'}.",0,$finalreport,$genericStatus,$html);
   return;
 }
 
@@ -1884,11 +1911,17 @@ sub check_replace($) {
 sub check_deletes($) {
   my $status = shift;
 
-
+  my $value =0;
+    my $indicator = $MysqlIndicatorContainer->{com_delete};
+    
+    if (defined $indicator->{_relative} && $indicator->{_relative} ne ""){
+                $value = $indicator->{_relative};
+    }
+    
   my $eff = sprintf("%.2f", ((($status->{'com_delete'} ) / $status->{'queries'}) * 100));
 
   
-  $finalreport =$finalreport.doPrint("$SPACER&green Server is performing Deletes  =($eff) of total | Replace = $status->{'com_delete'}  Total = $status->{'queries'}.",0,$finalreport,$genericStatus,$html);
+  $finalreport =$finalreport.doPrint("$SPACER&green Deletes  =($eff) of total | Delete Curr = $value  Total = $status->{'com_delete'}.",0,$finalreport,$genericStatus,$html);
   return;
 }
 
@@ -1901,11 +1934,37 @@ sub check_deletes($) {
 sub check_allmodifier($) {
   my $status = shift;
 
+    my $value =0;
+    my $indicator = $MysqlIndicatorContainer->{com_replace};
+    my $indicator2 =$MysqlIndicatorContainer->{com_update};
+    my $indicator3 =$MysqlIndicatorContainer->{com_update_multi};
+    my $indicator4 =$MysqlIndicatorContainer->{com_insert};
+    my $indicator5 =$MysqlIndicatorContainer->{com_insert_select};
+    
+    if (defined $indicator->{_relative} && $indicator->{_relative} ne ""){
+                $value = $indicator->{_relative};
+    }
+    if (defined $indicator2->{_relative} && $indicator2->{_relative} ne ""){
+                $value = $value + $indicator2->{_relative};
+    }
+    if (defined $indicator3->{_relative} && $indicator3->{_relative} ne ""){
+                $value = $value + $indicator3->{_relative};
+    }
+    if (defined $indicator3->{_relative} && $indicator3->{_relative} ne ""){
+                $value = $value + $indicator3->{_relative};
+    }
+    if (defined $indicator4->{_relative} && $indicator4->{_relative} ne ""){
+                $value = $value + $indicator4->{_relative};
+    }
+    if (defined $indicator5->{_relative} && $indicator5->{_relative} ne ""){
+                $value = $value + $indicator5->{_relative};
+    }
+
 
   my $eff = sprintf("%.2f", ((($status->{'com_replace'} + $status->{'com_update'} + $status->{'com_update_multi'} + $status->{'com_insert'} + $status->{'com_insert_select'} ) / $status->{'queries'}) * 100));
 
   my $a_sum = sprintf("%.2f",$status->{'com_replace'} + $status->{'com_update'} + $status->{'com_delete'} + $status->{'com_update_multi'} + $status->{'com_insert'} + $status->{'com_insert_select'});
-  $finalreport =$finalreport.doPrint("$SPACER&green Server ALL modifier statments  =($eff) of total | All modifier = $a_sum  Total = $status->{'queries'}.",0,$finalreport,$genericStatus,$html);
+  $finalreport =$finalreport.doPrint("$SPACER&green ALL modifier statments  =($eff) of total | All modifier = $value Total = $a_sum.",0,$finalreport,$genericStatus,$html);
   return;
 }
 
@@ -1918,12 +1977,17 @@ sub check_allmodifier($) {
 sub check_selects($) {
   my $status = shift;
 
-
+    my $indicator;
+    my $value =0;
+    $indicator = $MysqlIndicatorContainer->{com_select};
+    if (defined $indicator->{_relative} && $indicator->{_relative} ne ""){
+                $value = $indicator->{_relative};
+    }            
   my $eff = sprintf("%.2f",((($status->{'com_select'}) / $status->{'queries'}) * 100));
 
   my $a_sum = sprintf("%.2f", $status->{'com_select'} );
   
-  $finalreport =$finalreport.doPrint("$SPACER&green Server is performing Select  =($eff) of total | Select = $a_sum  Total = $status->{'queries'}.",0,$finalreport,$genericStatus,$html);
+  $finalreport =$finalreport.doPrint("$SPACER&green Select  =($eff) of total | Select Cur = $value Total = $a_sum.",0,$finalreport,$genericStatus,$html);
   return;
 }
 
@@ -2102,15 +2166,28 @@ sub check_innodb_rowusage($$)
     
 
     
-    my $reads =($status->{innodb_rows_read});
-    my $writes =($status->{innodb_rows_inserted});
-    my $update =($status->{innodb_rows_updated});
-    my $delete =($status->{innodb_rows_deleted});
+    #my $reads =($status->{innodb_rows_read});
+    #my $writes =($status->{innodb_rows_inserted});
+    #my $update =($status->{innodb_rows_updated});
+    #my $delete =($status->{innodb_rows_deleted});
+    #
+      my $Variables = "innodb_rows_read,innodb_rows_inserted,innodb_rows_updated,innodb_rows_deleted";
+    
+     foreach my $key (sort split(',',$Variables)){
+	    my $indicator;
+	    my $value =0;
+            $indicator = $MysqlIndicatorContainer->{$key};
+            if (defined $indicator->{_relative} && $indicator->{_relative} ne ""){
+                $value = $indicator->{_relative};
+            }            
+	$finalreport =$finalreport.doPrint("$SPACER $key = $value",0,$finalreport,$genericStatus,$html);
+	
+     }
 
-    $finalreport =$finalreport.doPrint("$SPACER InnoDB BufferPool READS   avg = ".($reads/$status->{uptime})."",0,$finalreport,$genericStatus,$html);
-    $finalreport =$finalreport.doPrint("$SPACER InnoDB BufferPool WRITES  avg = ".($writes/$status->{uptime})."",0,$finalreport,$genericStatus,$html);
-    $finalreport =$finalreport.doPrint("$SPACER InnoDB BufferPool UPDATE  avg = ".($update/$status->{uptime})."",0,$finalreport,$genericStatus,$html);
-    $finalreport =$finalreport.doPrint("$SPACER InnoDB BufferPool DELETES avg = ".($delete/$status->{uptime})."",0,$finalreport,$genericStatus,$html);
+    #$finalreport =$finalreport.doPrint("$SPACER InnoDB BufferPool READS   Cur = ".." avg = ".($reads/$status->{uptime})."",0,$finalreport,$genericStatus,$html);
+    #$finalreport =$finalreport.doPrint("$SPACER InnoDB BufferPool WRITES  Cur = ".." avg = ".($writes/$status->{uptime})."",0,$finalreport,$genericStatus,$html);
+    #$finalreport =$finalreport.doPrint("$SPACER InnoDB BufferPool UPDATE  Cur = ".." avg = ".($update/$status->{uptime})."",0,$finalreport,$genericStatus,$html);
+    #$finalreport =$finalreport.doPrint("$SPACER InnoDB BufferPool DELETES Cur = ".." avg = ".($delete/$status->{uptime})."",0,$finalreport,$genericStatus,$html);
     
 }
 
@@ -3174,7 +3251,9 @@ sub PrintSystatGnufile($$){
     
     #
     my @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
+    #,"diskstatsOperation","diskstatsBytes","cpustatsActivity","cpustatsIrq","processStats","memstatsSwap","memstatsPageFs" ,"memstatsUsage" );
     #"processes"
+    #"diskstatsOperation","diskstatsBytes","cpustatsActivity","cpustatsIrq","processStats","memstatsSwap","memstatsPageFs" ,"memstatsUsage" 
     
     foreach my $mainkey (sort @StatsToRead ){
         $relativePosition =2;
@@ -3203,6 +3282,31 @@ sub PrintSystatGnufile($$){
                 }
             }
 
+
+#   my @StatsToRead = ("netstats","diskstats","diskusage","cpustats","processes");
+#    
+#    foreach my $mainkey (sort @StatsToRead ){
+#        foreach my $key (sort keys %{$stat->{$mainkey}})
+#        {   #print "$mainkey $key \n";
+#	    foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
+#		$systatHeader = $systatHeader.",${subkey}_${key}";
+#		$systatdata = $systatdata
+#		.",".$stat->{$mainkey}->{$key}->{$subkey};
+#	    }
+#	}
+#    }
+#
+#    @StatsToRead = ("memstats","pgswstats");
+#    
+#    foreach my $mainkey (sort @StatsToRead ){
+#        foreach my $key (sort keys %{$stat->{$mainkey}})
+#        {   #print "$mainkey $key \n";
+#            $systatHeader = $systatHeader.",${key}";
+#            $systatdata = $systatdata
+#            .",".$stat->{$mainkey}->{$key};
+#        }
+#    }
+
             
         
                 foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
@@ -3230,7 +3334,7 @@ sub PrintSystatGnufile($$){
                     }
                     if ($plotstring eq "" && $processElementStats == 1)
                     {
-                        #print $#itemAttribs."   ".$itemAttribs[0];
+                        print $#itemAttribs."   ".$itemAttribs[0];
                         if($processElementStats == 1
                            && $#itemAttribs >= 0
                            && $itemAttribs[0] eq "line"){

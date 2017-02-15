@@ -125,6 +125,25 @@ sub get_status($$) {
   return \%v;
 }
 
+sub get_status_by_name($$$) {
+  my $dbh = shift;
+  my $name = shift;
+  my $debug = shift;
+  my %v;
+  my $cmd = "show /*!50000 global */ status like '$name'";
+
+  my $sth = $dbh->prepare($cmd);
+  $sth->execute();
+  while (my $ref = $sth->fetchrow_hashref()) {
+    my $n = $ref->{'Variable_name'};
+    $v{"\L$n\E"} = $ref->{'Value'};
+    if ($debug>0){print "MySQL status = ".$n."\n";}
+  }
+
+  return \%v;
+}
+
+
 ##
 ## get_variables -- return a hash ref to SHOW GLOBAL VARIABLES output
 ##
