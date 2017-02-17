@@ -3103,6 +3103,29 @@ sub PrintGnufile($$){
                     $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition-1);
                 }
             }
+	    elsif($position > 0 &&  $chartType eq "points"){
+                if ($plotstring eq "")
+                {
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w points ls ".($relativePosition-1);
+                }
+                else
+                {
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w points ls ".($relativePosition-1);
+                }
+		
+	    }
+	    elsif($position > 0 &&  $chartType eq "stacked"){ 
+                if ($plotstring eq "")
+                {
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w stacked ls ".($relativePosition-1);
+                }
+                else
+                {
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w stacked ls ".($relativePosition-1);
+                }
+		
+	    }
+
             elsif($position > 0 &&  $chartType eq "boxes")
             {
                 #plot "Connections.csv" u 1:($3)  w l ,
@@ -3143,10 +3166,19 @@ sub PrintGnufile($$){
 	$gnuconf=$gnuconf."#set logscale y # for y-axis only\n";
 	$gnuconf=$gnuconf."#set logscale x\n";
 	$gnuconf=$gnuconf."#set xdtics 24\n\n";
+	$gnuconf=$gnuconf."set title \"".$gnuparam->{title}."\"\n";
+	$gnuconf=$gnuconf."set xlabel \"time\"\n";
+	$gnuconf=$gnuconf."set ylabel \"instances\"\n";
+	$gnuconf=$gnuconf."set datafile separator \" \"\n\n";
+	$gnuconf=$gnuconf."set timefmt \"%Y-%m-%d %H:%M:%S\"\n";
+	$gnuconf=$gnuconf."#set logscale # turn on double logarithmic plotting\n";
+	$gnuconf=$gnuconf."#set logscale y # for y-axis only\n";
+	$gnuconf=$gnuconf."#set logscale x\n";
+	$gnuconf=$gnuconf."#set xdtics 24\n\n";
 	$gnuconf=$gnuconf."set autoscale xfixmin\n";
 	$gnuconf=$gnuconf."set autoscale xfixmax\n";
 	$gnuconf=$gnuconf."set xrange [0:]\n";
-	$gnuconf=$gnuconf."set yrange [1:]\n\n";
+	$gnuconf=$gnuconf."set yrange [0:]\n\n";
             
 	$gnuconf=$gnuconf."set lmargin at screen 0.10\n";
 	$gnuconf=$gnuconf."set rmargin at screen 0.90\n";
@@ -3157,38 +3189,19 @@ sub PrintGnufile($$){
 	$gnuconf=$gnuconf."set xdata time\n";
 	$gnuconf=$gnuconf."set key autotitle columnhead\n\n";
 
-        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"arial:name 6:size\"\n";
+        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"courier:name 6:size\"\n";
         $gnuconf=$gnuconf."#set terminal x11 size 1149,861\n";
         $gnuconf=$gnuconf."set output \"".$gnuparam->{title}.".png\"\n\n";
 
 	$gnuconf=$gnuconf."set auto x\n";
 	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
-	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq \n";
+        $gnuconf=$gnuconf."set format y \"%s\"\n";
+	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq font ,6\n";
         $gnuconf=$gnuconf."set mxtics 4\n";
 	$gnuconf=$gnuconf."set ytics\n";
 	$gnuconf=$gnuconf."set mytics 5\n";
 	$gnuconf=$gnuconf."set termoption font \"arial:name 10:size\"\n\n";
-        $gnuconf=$gnuconf."set style line 1 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#113F8C\"\n";
-        $gnuconf=$gnuconf."set style line 2 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#61AE24\"\n";
-        $gnuconf=$gnuconf."set style line 3 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D70060\"\n";
-        $gnuconf=$gnuconf."set style line 4 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#616161\"\n";
-        $gnuconf=$gnuconf."set style line 5 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#01A4A4\"\n";
-        $gnuconf=$gnuconf."set style line 6 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D0D102\"\n";
-        $gnuconf=$gnuconf."set style line 7 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#E54028\"\n";
-        $gnuconf=$gnuconf."set style line 8 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#00A1CB\"\n";
-        $gnuconf=$gnuconf."set style line 9 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#32742C\"\n";
-        $gnuconf=$gnuconf."set style line 10 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#F18D05\"\n";
-        $gnuconf=$gnuconf."set style line 11 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#709DEB\"\n";
-        $gnuconf=$gnuconf."set style line 12 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#99F553\"\n"; 
-        $gnuconf=$gnuconf."set style line 13 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#9F0649\"\n";
-        $gnuconf=$gnuconf."set style line 14 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#C9BCC2\"\n";
-        $gnuconf=$gnuconf."set style line 15 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#20DEDE\"\n";
-        $gnuconf=$gnuconf."set style line 16 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#A8A809\"\n";
-        $gnuconf=$gnuconf."set style line 17 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#861706\"\n";
-        $gnuconf=$gnuconf."set style line 18 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#488797\"\n";
-        $gnuconf=$gnuconf."set style line 19 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#25721C\"\n";
-        $gnuconf=$gnuconf."set style line 20 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#BD8128\"\n";
-        
+	$gnuconf=$gnuconf."set key center bottom outside vertical samplen 10 spacing 1.1";        
 	
 	$gnuconf=$gnuconf.$plotstring."\n\n";
 	if($Param->{debug} >0 ){
@@ -3420,7 +3433,53 @@ sub GnuPlotConfStats($$$){
     $mainkey = shift;
     $plotstring = shift;
     my $filterString = shift;
-    
+            my $style = <<"GNU_STYLE";
+	    set style line 1 lt 1 lw 1 pt 7 ps ps lc rgbcolor  "#8DB600"
+	    set style line 2 lt 1 lw 1 pt 7 ps ps lc rgbcolor  "#B3446C"
+	    set style line 3 lt 1 lw 1 pt 7 ps ps lc rgbcolor  "#F3C300"
+	    set style line 4 lt 1 lw 1 pt 7 ps ps lc rgbcolor  "#875692"
+	    set style line 5 lt 1 lw 1 pt 7 ps ps lc rgbcolor  "#F38400"
+	    set style line 6 lt 1 lw 1 pt 7 ps ps lc rgbcolor  "#A1CAF1"
+	    set style line 7 lt 1 lw 1 pt 7 ps ps lc rgbcolor  "#BE0032"
+	    set style line 8 lt 1 lw 1 pt 7 ps ps lc rgbcolor  "#C2B280"
+	    set style line 9 lt 1 lw 1 pt 7 ps ps lc rgbcolor  "#848482"
+	    set style line 10 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#008856"
+	    set style line 11 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#E68FAC"
+	    set style line 12 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#0067A5"
+	    set style line 13 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#F99379"
+	    set style line 14 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#604E97"
+	    set style line 15 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#F6A600"
+	    set style line 16 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#2B3D26"
+	    set style line 17 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#DCD300"
+	    set style line 18 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#882D17"
+	    set style line 19 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#E25822"
+	    set style line 20 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#654522"
+	    set style line 21 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#F2F3F4"
+	    set style line 22 lt 1 lw 1 pt 7 ps ps lc rgbcolor "#222222"
+	    set style line 101 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#8DB600"
+	    set style line 102 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#B3446C"
+	    set style line 103 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#F3C300"
+	    set style line 104 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#875692"
+	    set style line 105 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#F38400"
+	    set style line 106 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#A1CAF1"
+	    set style line 107 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#BE0032"
+	    set style line 108 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#C2B280"
+	    set style line 109 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#848482"
+	    set style line 110 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#008856"
+	    set style line 111 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#E68FAC"
+	    set style line 112 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#0067A5"
+	    set style line 113 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#F99379"
+	    set style line 114 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#604E97"
+	    set style line 115 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#F6A600"
+	    set style line 116 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#2B3D26"
+	    set style line 117 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#DCD300"
+	    set style line 118 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#882D17"
+	    set style line 119 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#E25822"
+	    set style line 120 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#654522"
+	    set style line 121 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#F2F3F4"
+	    set style line 122 lt 1 lw 10 pt 7 ps ps lc rgbcolor "#222222"
+GNU_STYLE
+
     if( $mainkey ne "" &&  $plotstring ne "")
     {
 	
@@ -3450,40 +3509,22 @@ sub GnuPlotConfStats($$$){
 	$gnuconf=$gnuconf."set xdata time\n";
 	$gnuconf=$gnuconf."set key autotitle columnhead\n\n";
 
-        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"arial:name 6:size\"\n";
+        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"courier:name 6:size\"\n";
         $gnuconf=$gnuconf."#set terminal x11 size 1149,861\n";
         $gnuconf=$gnuconf."set output \"".$mainkey.".png\"\n\n";
 
 	$gnuconf=$gnuconf."set auto x\n";
 	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
         $gnuconf=$gnuconf."set format y \"%s\"\n";
-	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq \n";
+	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq font ,6\n";
         $gnuconf=$gnuconf."set mxtics 4\n";
 	$gnuconf=$gnuconf."set ytics\n";
 	$gnuconf=$gnuconf."set mytics 5\n";
 	$gnuconf=$gnuconf."set termoption font \"arial:name 10:size\"\n\n";
-        $gnuconf=$gnuconf."set style line 1 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#113F8C\"\n";
-        $gnuconf=$gnuconf."set style line 2 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#61AE24\"\n";
-        $gnuconf=$gnuconf."set style line 3 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D70060\"\n";
-        $gnuconf=$gnuconf."set style line 4 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#616161\"\n";
-        $gnuconf=$gnuconf."set style line 5 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#01A4A4\"\n";
-        $gnuconf=$gnuconf."set style line 6 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D0D102\"\n";
-        $gnuconf=$gnuconf."set style line 7 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#E54028\"\n";
-        $gnuconf=$gnuconf."set style line 8 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#00A1CB\"\n";
-        $gnuconf=$gnuconf."set style line 9 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#32742C\"\n";
-        $gnuconf=$gnuconf."set style line 10 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#F18D05\"\n";
-        $gnuconf=$gnuconf."set style line 11 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#709DEB\"\n";
-        $gnuconf=$gnuconf."set style line 12 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#99F553\"\n"; 
-        $gnuconf=$gnuconf."set style line 13 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#9F0649\"\n";
-        $gnuconf=$gnuconf."set style line 14 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#C9BCC2\"\n";
-        $gnuconf=$gnuconf."set style line 15 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#20DEDE\"\n";
-        $gnuconf=$gnuconf."set style line 16 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#A8A809\"\n";
-        $gnuconf=$gnuconf."set style line 17 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#861706\"\n";
-        $gnuconf=$gnuconf."set style line 18 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#488797\"\n";
-        $gnuconf=$gnuconf."set style line 19 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#25721C\"\n";
-        $gnuconf=$gnuconf."set style line 20 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#BD8128\"\n";
-        
+	$gnuconf=$gnuconf."set key center bottom outside vertical samplen 10 spacing 1.1";
 	
+	
+		
 	$gnuconf=$gnuconf.$plotstring."\n\n";
 	if($Param->{debug} >0 ){
 	    print $gnuconf;
@@ -3499,7 +3540,6 @@ sub GnuPlotConfStats($$$){
     #print $plotstring;
     return $gnuconf;
 }
-
 
 ######################################################################
 ##
