@@ -4,6 +4,8 @@
 <preference-set idref="761b7b40-49dc-4fdd-8109-1d8d94677a47">
   <boolean id="import_live">1</boolean>
 </preference-set>
+<preference-set idref="761b7b40-49dc-4fdd-8109-1d8d94677a47/gnuplot_graphs.ini">
+</preference-set>
 <preference-set idref="761b7b40-49dc-4fdd-8109-1d8d94677a47/mysqllocalcheck_multiple.pl">
 <preference-set id="Invocations">
 <preference-set id="default">
@@ -58,7 +60,7 @@
   <string id="getparams"></string>
   <string id="language">Perl</string>
   <string id="mpostparams"></string>
-  <string id="params">-u=stress  -p=tool -H=192.168.0.35  -P=3306 -l=0 -w=1 -i=1 -x=200 --innodb=3 --healtonscreen=1 -o=/tmp/stats.csv  -C=0 --sysstats=1 </string>
+  <string id="params">-u=stress  -p=test -H=192.168.0.5  -P=3306 -l=0 -w=1 -i=1 -x=200 --innodb=3 --healtonscreen=1 -o=/tmp/stats.csv  -C=0 --sysstats=1 --headers=1 --creategnuplot=1</string>
   <string id="postparams"></string>
   <string id="posttype">application/x-www-form-urlencoded</string>
   <string id="request-method">GET</string>

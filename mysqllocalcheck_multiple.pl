@@ -274,6 +274,9 @@ if($Param->{sysstats} == 1){
     if($Param->{"OS"} eq "linux"){
         $mysqlpid = `pidof mysqld`;
         $mysqlpid =~ s/\n//g;
+	if($mysqlpid eq ""){
+	    $mysqlpid = 0;
+	}
     }
     elsif($Param->{"OS"} eq "MSWin32"){
         my @procs = `tasklist`;
@@ -516,7 +519,23 @@ sub initIndicators($$){
     }
     
     #Now Load the indicators coming from the STATUS
-    foreach my $key (sort keys %KeyStatus)
+
+    #foreach my $key (sort keys %KeyStatus)
+    #{
+    #
+    #    if( defined $filterSP{$key} ){
+    #        my $indicator = eval { new mysqlindicator(); }  or die ($@);
+    #
+    #        $indicator->{name} = $key;
+    #        $indicator->{_calculated} = $filterSP{$key}->{_calculated};
+    #        $MysqlIndicatorContainer{$key}= $indicator;
+    #        if($debug > 0){print "Orig_key = ".$key." container = ".$indicator->{name}."|".$indicator->{_calculated}."\n";}
+    #    }
+    #    
+    #}
+
+
+    foreach my $key (sort keys %filterSP)
     {
 
         if( defined $filterSP{$key} ){
@@ -1006,7 +1025,18 @@ if( defined $Param->{outfile}){
             $indicator = $MysqlIndicatorContainer->{$key};
             if (defined $indicator && $indicator ne '' && $indicator->{name} ne ''){
                 if($debug > 0){print "key=".$key."  ".$indicator->{name}."\n";}
-                $header = $header.','. $indicator->{name};
+                my $varName = "";
+		$varName = $indicator->{name};
+		$varName=~  s/_([a-z|A-Z])/\U$1/g ;
+		$varName=~  s/_//g ;
+		$header = $header.',"'.$varName.'"';
+#		if($indicator->{name} eq "wsrep_evs_repl_latency"){
+#    		    $header = $header.',"'.$varName.'Min"';
+#		    $header = $header.',"'.$varName.'Max"';
+#    		    $header = $header.',"'.$varName.'Avg"';		    
+#		}
+
+		#$header = $header.','. $indicator->{name};
             }
         }
     }
@@ -1036,7 +1066,12 @@ sub print_report_column(){
                 if($debug > 0){print "key=".$key."  ".$indicator->{name}."\n";}
                 $headerMap->{$indicator->{name}}=$Position;
                 $header = $header.$Position++.":". $indicator->{name}."\n";
-                            }
+		#if($indicator->{name} eq "wsrep_evs_repl_latency"){
+		#    $header = $header.$Position++.":". $indicator->{name}."Min\n";
+		#    $header = $header.$Position++.":". $indicator->{name}."Max\n";
+		#    $header = $header.$Position++.":". $indicator->{name}."Avg\n";
+		#}
+            }
         }
     }
    
@@ -1178,6 +1213,16 @@ if( defined $Param->{outfile}){
             $indicator = $MysqlIndicatorContainer->{$key};
             if (defined $indicator->{_relative} && $indicator->{_relative} ne ""){
                 $line = $line.','.$indicator->{_relative};
+		#if($MysqlIndicatorContainer->{$key} eq "wsrep_evs_repl_latency"){
+		#    my @latency_values = split('/',$indicator->{_relative});
+		#    for(my $iLat=0;$iLat < $#latency_values; $iLat++ ){
+		#	if($iLat >2){
+		#	    last;
+		#	}
+		#	$line = $line.','.$latency_values[$iLat];
+		#    }
+		#}
+		
             }
             else{
                 $line = $line.',0';
@@ -2238,6 +2283,18 @@ sub feed_MysqlIndicatorContainer($$$$$$){
             if ($value =~ m/[-+]?\b\d+\b/im){
                 $MysqlIndicatorContainer{$key}->setValue($value);
             }
+	    
+	    if($key eq "wsrep_evs_repl_latency"){
+		my $value = $status->{$key};
+		my @latency_values = split('/',$value);
+		if($#latency_values > 2){
+		    $MysqlIndicatorContainer{$key."Min"}->setValue($latency_values[0]);
+		    $MysqlIndicatorContainer{$key."Max"}->setValue($latency_values[2]);
+		    $MysqlIndicatorContainer{$key."Avg"}->setValue($latency_values[1]);
+		}
+		  
+	    }
+	    
         }
         
     }
@@ -2359,6 +2416,9 @@ sub analise_innodb_Status_method2($) {
       AIB_additional_pool_alloc     => 0,
       AIB_last_checkpoint           => 0,
       AIB_uncheckpointed_bytes      => 0,
+      AIB_Max_checkpoint_age	    => 0,
+      AIB_Checkpoint_age_target	    => 0,
+      AIB_Checkpoint_age	    => 0,
       AIB_ibuf_used_cells           => 0,
       AIB_ibuf_free_cells           => 0,
       AIB_ibuf_cell_count           => 0,
@@ -2374,6 +2434,7 @@ sub analise_innodb_Status_method2($) {
       AIB_hash_searches_non          =>0,
       AIB_innodb_sem_wait_time_ms   => 0,
    );
+ 
    my $txn_seen = 0;
    my @lines = split(/\n/, $text) ;
     
@@ -2573,7 +2634,28 @@ sub analise_innodb_Status_method2($) {
             ? make_bigint($row[3], $row[4])
             : int($row[3]);
       }
-
+      elsif (index($line, "Max checkpoint age") >=0 ) {
+         # Last checkpoint at  125 3934293461
+         $results{AIB_Max_checkpoint_age}
+            = defined $row[4]
+            ? make_bigint($row[3], $row[4])
+            : int($row[3]);
+      }
+      elsif (index($line, "Checkpoint age target") >=0 ) {
+         # Last checkpoint at  125 3934293461
+         $results{AIB_Checkpoint_age_target}
+            = defined $row[4]
+            ? make_bigint($row[3], $row[4])
+            : int($row[3]);
+      }
+      elsif (index($line, "Checkpoint age") >=0 ) {
+         # Last checkpoint at  125 3934293461
+         $results{AIB_Checkpoint_age}
+            = defined $row[3]
+            ? make_bigint($row[2], $row[3])
+            : int($row[2]);
+      }
+      
       # BUFFER POOL AND MEMORY
       elsif (index($line, "Total memory allocated") >=0 ) {
          # Total memory allocated 29642194944; in additional pool allocated 0
@@ -2752,6 +2834,7 @@ sub SysStats($$$$$)
     if ($Param->{sysstatsinit} eq "0" && $Param->{sysstats} eq "1"){
         print $FILEOUTSTATS $systatHeader."\n";
         $Param->{sysstatsinit} = 1;
+	$Param->{sysstatHeaders} = $systatHeader;
     }
     print $FILEOUTSTATS $systatdata."\n";
 
@@ -3037,6 +3120,59 @@ sub PrintGnufile($$){
     my @returnvalues;
     my $relativePosition =2;
     my $prePlotstring ="" ;
+    my $parent = "";
+    
+    if(defined $gnuparam->{parent}  && $gnuparam->{parent} ne ""){
+	$parent = $gnuparam->{parent} ; 
+    }
+    
+    my $style = <<"GNU_STYLE";
+	    set style line 1 lt 1 lw 1 pt 7 ps 0.8  lc rgbcolor  "#8DB600"
+	    set style line 2 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#B3446C"
+	    set style line 3 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#F3C300"
+	    set style line 4 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#875692"
+	    set style line 5 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#F38400"
+	    set style line 6 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#A1CAF1"
+	    set style line 7 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#BE0032"
+	    set style line 8 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#C2B280"
+	    set style line 9 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#848482"
+	    set style line 10 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#008856"
+	    set style line 11 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#E68FAC"
+	    set style line 12 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#0067A5"
+	    set style line 13 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#F99379"
+	    set style line 14 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#604E97"
+	    set style line 15 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#F6A600"
+	    set style line 16 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#2B3D26"
+	    set style line 17 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#DCD300"
+	    set style line 18 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#882D17"
+	    set style line 19 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#E25822"
+	    set style line 20 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#654522"
+	    set style line 21 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#F2F3F4"
+	    set style line 22 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#222222"
+	    set style line 101 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#8DB600"
+	    set style line 102 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#B3446C"
+	    set style line 103 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F3C300"
+	    set style line 104 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#875692"
+	    set style line 105 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F38400"
+	    set style line 106 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#A1CAF1"
+	    set style line 107 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#BE0032"
+	    set style line 108 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#C2B280"
+	    set style line 109 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#848482"
+	    set style line 110 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#008856"
+	    set style line 111 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#E68FAC"
+	    set style line 112 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#0067A5"
+	    set style line 113 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F99379"
+	    set style line 114 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#604E97"
+	    set style line 115 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F6A600"
+	    set style line 116 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#2B3D26"
+	    set style line 117 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#DCD300"
+	    set style line 118 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#882D17"
+	    set style line 119 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#E25822"
+	    set style line 120 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#654522"
+	    set style line 121 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F2F3F4"
+	    set style line 122 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#222222"
+GNU_STYLE
+
     
     foreach my $key2 (sort keys %{$gnuparam})
     {
@@ -3056,7 +3192,8 @@ sub PrintGnufile($$){
 
         
             my $position = 0;
-            if(defined $HeadersMap->{$key2} && $HeadersMap->{$key2} ne "")
+            #if( (defined $HeadersMap->{$key2} && $HeadersMap->{$key2} ne "") || (defined $HeadersMap->{$parent} && index($key2,$parent)> -1 ))
+	    if( (defined $HeadersMap->{$key2} && $HeadersMap->{$key2} ne ""))
             {
                 $position = $HeadersMap->{$key2};
                 if($position > 0)
@@ -3103,6 +3240,29 @@ sub PrintGnufile($$){
                     $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition-1);
                 }
             }
+	    elsif($position > 0 &&  $chartType eq "points"){
+                if ($plotstring eq "")
+                {
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w points ls ".($relativePosition-1);
+                }
+                else
+                {
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w points ls ".($relativePosition-1);
+                }
+		
+	    }
+	    elsif($position > 0 ){ 
+                if ($plotstring eq "")
+                {
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w ".$chartType." ls ".($relativePosition-1);
+                }
+                else
+                {
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w ".$chartType." ls ".($relativePosition-1);
+                }
+		
+	    }
+
             elsif($position > 0 &&  $chartType eq "boxes")
             {
                 #plot "Connections.csv" u 1:($3)  w l ,
@@ -3131,10 +3291,12 @@ sub PrintGnufile($$){
     }
     if( $gnuparam ne "" &&  $awkposition ne "")
     {
+	my $title = $gnuparam->{title};
+	$title =~ s/_/ /g;
 	
-	$gnuconf=$gnuconf."\n#------------$gnuparam->{title}------------------------\n";
+	$gnuconf=$gnuconf."\n#------------$title------------------------\n";
 	$gnuconf=$gnuconf."reset \n";
-	$gnuconf=$gnuconf."set title \"".$gnuparam->{title}."\"\n";
+	$gnuconf=$gnuconf."set title \"".$title."\"\n";
 	$gnuconf=$gnuconf."set xlabel \"".$gnuparam->{xaxis}."\"\n";
 	$gnuconf=$gnuconf."set ylabel \"".$gnuparam->{yaxis}."\"\n";
 	$gnuconf=$gnuconf."set datafile separator \" \"\n\n";
@@ -3143,10 +3305,19 @@ sub PrintGnufile($$){
 	$gnuconf=$gnuconf."#set logscale y # for y-axis only\n";
 	$gnuconf=$gnuconf."#set logscale x\n";
 	$gnuconf=$gnuconf."#set xdtics 24\n\n";
-	$gnuconf=$gnuconf."set autoscale xfixmin\n";
-	$gnuconf=$gnuconf."set autoscale xfixmax\n";
+	#$gnuconf=$gnuconf."set title \"".$gnuparam->{title}."\"\n";
+	#$gnuconf=$gnuconf."set xlabel \"time\"\n";
+	#$gnuconf=$gnuconf."set ylabel \"instances\"\n";
+	#$gnuconf=$gnuconf."set datafile separator \" \"\n\n";
+	#$gnuconf=$gnuconf."set timefmt \"%Y-%m-%d %H:%M:%S\"\n";
+	#$gnuconf=$gnuconf."#set logscale # turn on double logarithmic plotting\n";
+	#$gnuconf=$gnuconf."#set logscale y # for y-axis only\n";
+	#$gnuconf=$gnuconf."#set logscale x\n";
+	#$gnuconf=$gnuconf."#set xdtics 24\n\n";
+	#$gnuconf=$gnuconf."set autoscale xfixmin\n";
+	#$gnuconf=$gnuconf."set autoscale xfixmax\n";
 	$gnuconf=$gnuconf."set xrange [0:]\n";
-	$gnuconf=$gnuconf."set yrange [1:]\n\n";
+	$gnuconf=$gnuconf."set yrange [0:]\n\n";
             
 	$gnuconf=$gnuconf."set lmargin at screen 0.10\n";
 	$gnuconf=$gnuconf."set rmargin at screen 0.90\n";
@@ -3157,40 +3328,24 @@ sub PrintGnufile($$){
 	$gnuconf=$gnuconf."set xdata time\n";
 	$gnuconf=$gnuconf."set key autotitle columnhead\n\n";
 
-        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"arial:name 6:size\"\n";
+        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"Courier:name 6:size\"\n";
         $gnuconf=$gnuconf."#set terminal x11 size 1149,861\n";
         $gnuconf=$gnuconf."set output \"".$gnuparam->{title}.".png\"\n\n";
 
 	$gnuconf=$gnuconf."set auto x\n";
 	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
-	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq \n";
+        $gnuconf=$gnuconf."set format y \"%s\"\n";
+	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq font \"Courier:name 6:size\"\n";
         $gnuconf=$gnuconf."set mxtics 4\n";
 	$gnuconf=$gnuconf."set ytics\n";
 	$gnuconf=$gnuconf."set mytics 5\n";
-	$gnuconf=$gnuconf."set termoption font \"arial:name 10:size\"\n\n";
-        $gnuconf=$gnuconf."set style line 1 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#113F8C\"\n";
-        $gnuconf=$gnuconf."set style line 2 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#61AE24\"\n";
-        $gnuconf=$gnuconf."set style line 3 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D70060\"\n";
-        $gnuconf=$gnuconf."set style line 4 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#616161\"\n";
-        $gnuconf=$gnuconf."set style line 5 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#01A4A4\"\n";
-        $gnuconf=$gnuconf."set style line 6 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D0D102\"\n";
-        $gnuconf=$gnuconf."set style line 7 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#E54028\"\n";
-        $gnuconf=$gnuconf."set style line 8 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#00A1CB\"\n";
-        $gnuconf=$gnuconf."set style line 9 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#32742C\"\n";
-        $gnuconf=$gnuconf."set style line 10 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#F18D05\"\n";
-        $gnuconf=$gnuconf."set style line 11 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#709DEB\"\n";
-        $gnuconf=$gnuconf."set style line 12 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#99F553\"\n"; 
-        $gnuconf=$gnuconf."set style line 13 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#9F0649\"\n";
-        $gnuconf=$gnuconf."set style line 14 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#C9BCC2\"\n";
-        $gnuconf=$gnuconf."set style line 15 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#20DEDE\"\n";
-        $gnuconf=$gnuconf."set style line 16 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#A8A809\"\n";
-        $gnuconf=$gnuconf."set style line 17 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#861706\"\n";
-        $gnuconf=$gnuconf."set style line 18 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#488797\"\n";
-        $gnuconf=$gnuconf."set style line 19 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#25721C\"\n";
-        $gnuconf=$gnuconf."set style line 20 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#BD8128\"\n";
-        
+	$gnuconf=$gnuconf."set termoption font \"Courier:name 6:size\"\n\n";
+	$gnuconf=$gnuconf."set key center bottom outside vertical samplen 10 spacing 1.1\n\n";        
+	
+	$gnuconf=$gnuconf.$style."\n\n";
 	
 	$gnuconf=$gnuconf.$plotstring."\n\n";
+	
 	if($Param->{debug} >0 ){
 	    print $gnuconf;
 	}
@@ -3243,14 +3398,51 @@ sub PrintSystatGnufile($$){
 #                      pids=> [$mysqlpid] }
 #        );
     #sleep(1);
+    
+    my $position = 3; 
+    my $statHeaderMap={};
+    
     my $stat = $lxs->get;
     #my %cpu  = $stat->cpustats;
     #my %disk = $stat->diskstats;
+    #################################################################
+    #Prepare the list of all headers to catch the right position after
+    ################################################################
+    my @StatsToRead = ("netstats","diskstats","diskusage","cpustats","processes");
+    foreach my $mainkey (sort @StatsToRead ){
+	my $myHwUnit ={};
+	foreach my $key (sort keys %{$stat->{$mainkey}})
+	{   #print "$mainkey $key \n";
+	        
+	    foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
+		$myHwUnit->{$key}->{$subkey}=$position++;
+	    }
+	    
+	}
+	$statHeaderMap->{$mainkey}=$myHwUnit;
+    }
+
+    @StatsToRead = ("memstats","pgswstats");
     
-    my $position = 3; 
+    foreach my $mainkey (sort @StatsToRead ){
+        my $myHwUnit ={};
+	foreach my $key (sort keys %{$stat->{$mainkey}})
+        {   #print "$mainkey $key \n";
+	    
+	    $myHwUnit->{$key}=$position++;
+            #$systatHeader = $systatHeader.",${key}";
+            #$systatdata = $systatdata
+            #.",".$stat->{$mainkey}->{$key};
+        }
+	$statHeaderMap->{$mainkey}=$myHwUnit;
+    }
+    ##############################################################################
+    
+    
+    $position = 3; 
     
     #
-    my @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
+    @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
     #,"diskstatsOperation","diskstatsBytes","cpustatsActivity","cpustatsIrq","processStats","memstatsSwap","memstatsPageFs" ,"memstatsUsage" );
     #"processes"
     #"diskstatsOperation","diskstatsBytes","cpustatsActivity","cpustatsIrq","processStats","memstatsSwap","memstatsPageFs" ,"memstatsUsage" 
@@ -3266,8 +3458,14 @@ sub PrintSystatGnufile($$){
         my $filterString = "";
         my @itemAttribs;
         my $filterItemC="";
+	my $stat_root=$mainkey;
 	
-        foreach my $key (sort keys %{$stat->{$mainkey}})
+
+	if(defined $cfg->{"Hwsys_".$mainkey}->{parent} && $cfg->{"Hwsys_".$mainkey}->{parent} ne "" ){
+	    $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent}
+	}
+
+        foreach my $key (sort keys %{$statHeaderMap->{$stat_root}})
         {   #print "$mainkey $key \n";
             foreach my $filterItem (sort @filters){
                 if($key eq $filterItem || $filterItem eq '*'){
@@ -3282,106 +3480,126 @@ sub PrintSystatGnufile($$){
                 }
             }
 
+	    foreach my $subkey (sort keys %{$statHeaderMap->{$mainkey}->{$key}}){
+		foreach my $cfgKey (sort keys %{$gnuplotConf}){
+		     if($filterItemC ne "" && $subkey eq $cfgKey){
+			 $processElementStats = 1;
+			 $position = $statHeaderMap->{$mainkey}->{$key}->{$subkey};
+			 @itemAttribs = split(',',$gnuplotConf->{$cfgKey});
+			 last;
+		     }
+		     else{
+			 $processElementStats = 0;
+			 $position=3;
+		     }
+		 }
 
-#   my @StatsToRead = ("netstats","diskstats","diskusage","cpustats","processes");
-#    
-#    foreach my $mainkey (sort @StatsToRead ){
-#        foreach my $key (sort keys %{$stat->{$mainkey}})
-#        {   #print "$mainkey $key \n";
-#	    foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
-#		$systatHeader = $systatHeader.",${subkey}_${key}";
-#		$systatdata = $systatdata
-#		.",".$stat->{$mainkey}->{$key}->{$subkey};
-#	    }
-#	}
-#    }
-#
-#    @StatsToRead = ("memstats","pgswstats");
-#    
-#    foreach my $mainkey (sort @StatsToRead ){
-#        foreach my $key (sort keys %{$stat->{$mainkey}})
-#        {   #print "$mainkey $key \n";
-#            $systatHeader = $systatHeader.",${key}";
-#            $systatdata = $systatdata
-#            .",".$stat->{$mainkey}->{$key};
-#        }
-#    }
-
-            
-        
-                foreach my $subkey (sort keys %{$stat->{$mainkey}->{$key}}){
-                    foreach my $cfgKey (sort keys %{$gnuplotConf}){
-                         if($filterItemC ne "" && $subkey eq $cfgKey){
-                             $processElementStats = 1;
-                             @itemAttribs = split(',',$gnuplotConf->{$cfgKey});
-                             last;
-                         }
-                         else{
-                             $processElementStats = 0;
-                         }
-                     }
-
-                    if($position > 2 && $processElementStats == 1)
-                    {
-                        if($awkpositionLocal eq "")
-                        {
-                            $awkpositionLocal = "\$".$position;
-                        }
-                        else
-                        {
-                            $awkpositionLocal = $awkpositionLocal.",\$".$position;
-                        }
-                    }
-                    if ($plotstring eq "" && $processElementStats == 1)
-                    {
-                        print $#itemAttribs."   ".$itemAttribs[0];
-                        if($processElementStats == 1
-                           && $#itemAttribs >= 0
-                           && $itemAttribs[0] eq "line"){
-                            $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w l ls ".($relativePosition-1);
-                        }
-                        elsif($processElementStats == 1 && $#itemAttribs >= 1) {
-                            $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") title ". $itemAttribs[1]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
-                        }
-                        else{
-                            $relativePosition++;
-                        }
-                    }
-                    elsif($processElementStats == 1)
-                    {
-                        if($processElementStats == 1 && $#itemAttribs >= 0 && $itemAttribs[0] eq "line"){
-                            $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w l ls ".($relativePosition-1);
-                        }
-                        elsif($processElementStats == 1 && $#itemAttribs >= 1){
-                            $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") title ". $itemAttribs[1]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
-                        }
-                        else{
-                            $relativePosition++;
-                        }
-                    }
-                    $position++ ;
-                }
+		if($position > 2 && $processElementStats == 1)
+		{
+		    if($awkpositionLocal eq "")
+		    {
+			$awkpositionLocal = "\$".$position;
+		    }
+		    else
+		    {
+			$awkpositionLocal = $awkpositionLocal.",\$".$position;
+		    }
+		}
+		if ($plotstring eq "" && $processElementStats == 1)
+		{
+		    #print $#itemAttribs."   ".$itemAttribs[0];
+		    if($processElementStats == 1
+		       && $#itemAttribs >= 0
+		       ){
+			$plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls ".($relativePosition-1);
+		    }
+		    elsif($processElementStats == 1 && $#itemAttribs >= 1) {
+			$plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") title ". $itemAttribs[0]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
+		    }
+		    else{
+			$relativePosition++;
+		    }
+		}
+		elsif($processElementStats == 1)
+		{
+		    if($processElementStats == 1 && $#itemAttribs >= 0){
+			$plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls ".($relativePosition-1);
+		    }
+		    elsif($processElementStats == 1 && $#itemAttribs >= 1){
+			$plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") title ". $itemAttribs[0]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
+		    }
+		    else{
+			$relativePosition++;
+		    }
+		}
+		#$position++ ;
+	    }
         }
         if($Param->{debug} >0 ){
 	    print "\n\n#----------------$mainkey--------------------\n";
 	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
 	}
 	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
-        $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString);
+        if($plotstring ne ""){
+	    $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString);
+	}
     }
 
-    @StatsToRead = ("memstats","pgswstats");
+    @StatsToRead = ("memstats","mem_committed","swap","pgswstats");
     
     foreach my $mainkey (sort @StatsToRead ){
         $relativePosition =2;
         my $awkpositionLocal ="";
         my $plotstring="" ;
+	my $gnuplotConf;
+        my $processStats = 0;
+        my $processElementStats =0;
+        my $filterString = "";
+        my @itemAttribs;
+        my $filterItemC="";
+	my $stat_root=$mainkey;
+	
 
-        foreach my $key (sort keys %{$stat->{$mainkey}})
+	if(defined $cfg->{"Hwsys_".$mainkey}->{parent} && $cfg->{"Hwsys_".$mainkey}->{parent} ne ""){
+	    $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent}
+	}
+
+        foreach my $key (sort keys %{$statHeaderMap->{$stat_root}})
         {   #print "$mainkey $key \n";
+	    my @filters = defined $cfg->{"Hwsys_".$mainkey}?split(',',$cfg->{"Hwsys_".$mainkey}->{filter}):"na";
+	    
+	    
+            foreach my $filterItem (sort @filters){
+                if($key eq $filterItem || $filterItem eq '*'){
+                    $processStats = 1;
+                    $filterItemC = $filterItem;
+                    $filterString = $filterString."_".$filterItem;
+                    $gnuplotConf = $cfg->{"Hwsys_".$mainkey};
+		    @itemAttribs = split(',',$gnuplotConf->{$key});
+                    last;
+                }
+                else{
+                    $filterItemC="";
+		    $gnuplotConf = $cfg->{"Hwsys_".$mainkey};
+		    if(defined $gnuplotConf->{$key}){
+			@itemAttribs = split(',',$gnuplotConf->{$key});
+		    }
+                }
+            }
+		$processElementStats = 0;
+		foreach my $cfgKey (sort keys %{$gnuplotConf}){
+		     if($key eq $cfgKey && $cfgKey ne ""){
+			 $position = $statHeaderMap->{$stat_root}->{$key};
+			 $processElementStats = 1;
+			 @itemAttribs = split(',',$gnuplotConf->{$cfgKey});
+			 last;
+		     }
+		     else{
+			 $processElementStats = 0;
+		     }
+		 }
                    
-                if($position > 2)
-                {
+                if($position > 2 && $processElementStats == 1){
                     if($awkpositionLocal eq "")
                     {
                         $awkpositionLocal = "\$".$position;
@@ -3390,23 +3608,27 @@ sub PrintSystatGnufile($$){
                     {
                         $awkpositionLocal = $awkpositionLocal.",\$".$position;
                     }
-                }
-                if ($plotstring eq "")
-                {
-                    $plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w l ls ".($relativePosition-1);
-                }
-                else
-                {
-                    $plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w l ls ".($relativePosition-1);
-                }
-                ++$position ;
+                
+		    if ($plotstring eq "" )
+		    {
+			$plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls ".($relativePosition-1);
+		    }
+		    else
+		    {
+			$plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls ".($relativePosition-1);
+		    }
+		}
+                #++$position ;
+	    
         }
         if($Param->{debug} >0 ){
 	    print "\n\n#----------------$mainkey--------------------\n";
 	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
 	}
 	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
-        $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,"");
+        if($plotstring ne ""){
+	    $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString);
+	}
 
     }
     print "\n\n ----------------------------------- STATISTICS -----------------------------\n";
@@ -3420,15 +3642,64 @@ sub GnuPlotConfStats($$$){
     $mainkey = shift;
     $plotstring = shift;
     my $filterString = shift;
-    
+            my $style = <<"GNU_STYLE";
+	    set style line 1 lt 1 lw 1 pt 7 ps 0.8  lc rgbcolor  "#8DB600"
+	    set style line 2 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#B3446C"
+	    set style line 3 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#F3C300"
+	    set style line 4 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#875692"
+	    set style line 5 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#F38400"
+	    set style line 6 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#A1CAF1"
+	    set style line 7 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#BE0032"
+	    set style line 8 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#C2B280"
+	    set style line 9 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#848482"
+	    set style line 10 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#008856"
+	    set style line 11 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#E68FAC"
+	    set style line 12 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#0067A5"
+	    set style line 13 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#F99379"
+	    set style line 14 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#604E97"
+	    set style line 15 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#F6A600"
+	    set style line 16 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#2B3D26"
+	    set style line 17 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#DCD300"
+	    set style line 18 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#882D17"
+	    set style line 19 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#E25822"
+	    set style line 20 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#654522"
+	    set style line 21 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#F2F3F4"
+	    set style line 22 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor "#222222"
+	    set style line 101 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#8DB600"
+	    set style line 102 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#B3446C"
+	    set style line 103 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F3C300"
+	    set style line 104 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#875692"
+	    set style line 105 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F38400"
+	    set style line 106 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#A1CAF1"
+	    set style line 107 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#BE0032"
+	    set style line 108 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#C2B280"
+	    set style line 109 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#848482"
+	    set style line 110 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#008856"
+	    set style line 111 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#E68FAC"
+	    set style line 112 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#0067A5"
+	    set style line 113 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F99379"
+	    set style line 114 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#604E97"
+	    set style line 115 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F6A600"
+	    set style line 116 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#2B3D26"
+	    set style line 117 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#DCD300"
+	    set style line 118 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#882D17"
+	    set style line 119 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#E25822"
+	    set style line 120 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#654522"
+	    set style line 121 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F2F3F4"
+	    set style line 122 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#222222
+GNU_STYLE
+
     if( $mainkey ne "" &&  $plotstring ne "")
     {
+	my $title = $mainkey;
+	$title=~ s/_/ /g;
 	
-	$gnuconf=$gnuconf."\n#------------$mainkey------------------------\n";
+	$gnuconf=$gnuconf."\n#------------$title------------------------\n";
         $gnuconf=$gnuconf."\n#--FILTERED $filterString------\n";
 	$gnuconf=$gnuconf."reset \n";
-	$gnuconf=$gnuconf."set title \"".$mainkey."\"\n";
+	$gnuconf=$gnuconf."set title \"".$title."\"\n";
 	$gnuconf=$gnuconf."set xlabel \"time\"\n";
+	#$gnuconf=$gnuconf."set ylabel \"".$gnuconf->{yaxis}."\"\n";
 	$gnuconf=$gnuconf."set ylabel \"instances\"\n";
 	$gnuconf=$gnuconf."set datafile separator \" \"\n\n";
 	$gnuconf=$gnuconf."set timefmt \"%Y-%m-%d %H:%M:%S\"\n";
@@ -3450,40 +3721,22 @@ sub GnuPlotConfStats($$$){
 	$gnuconf=$gnuconf."set xdata time\n";
 	$gnuconf=$gnuconf."set key autotitle columnhead\n\n";
 
-        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"arial:name 6:size\"\n";
+        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"Courier:name 6:size\"\n";
         $gnuconf=$gnuconf."#set terminal x11 size 1149,861\n";
         $gnuconf=$gnuconf."set output \"".$mainkey.".png\"\n\n";
 
 	$gnuconf=$gnuconf."set auto x\n";
 	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
         $gnuconf=$gnuconf."set format y \"%s\"\n";
-	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq \n";
+	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq font \"Courier:name 6:size\"\n";
         $gnuconf=$gnuconf."set mxtics 4\n";
 	$gnuconf=$gnuconf."set ytics\n";
 	$gnuconf=$gnuconf."set mytics 5\n";
-	$gnuconf=$gnuconf."set termoption font \"arial:name 10:size\"\n\n";
-        $gnuconf=$gnuconf."set style line 1 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#113F8C\"\n";
-        $gnuconf=$gnuconf."set style line 2 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#61AE24\"\n";
-        $gnuconf=$gnuconf."set style line 3 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D70060\"\n";
-        $gnuconf=$gnuconf."set style line 4 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#616161\"\n";
-        $gnuconf=$gnuconf."set style line 5 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#01A4A4\"\n";
-        $gnuconf=$gnuconf."set style line 6 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#D0D102\"\n";
-        $gnuconf=$gnuconf."set style line 7 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#E54028\"\n";
-        $gnuconf=$gnuconf."set style line 8 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#00A1CB\"\n";
-        $gnuconf=$gnuconf."set style line 9 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#32742C\"\n";
-        $gnuconf=$gnuconf."set style line 10 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#F18D05\"\n";
-        $gnuconf=$gnuconf."set style line 11 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#709DEB\"\n";
-        $gnuconf=$gnuconf."set style line 12 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#99F553\"\n"; 
-        $gnuconf=$gnuconf."set style line 13 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#9F0649\"\n";
-        $gnuconf=$gnuconf."set style line 14 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#C9BCC2\"\n";
-        $gnuconf=$gnuconf."set style line 15 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#20DEDE\"\n";
-        $gnuconf=$gnuconf."set style line 16 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#A8A809\"\n";
-        $gnuconf=$gnuconf."set style line 17 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#861706\"\n";
-        $gnuconf=$gnuconf."set style line 18 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#488797\"\n";
-        $gnuconf=$gnuconf."set style line 19 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#25721C\"\n";
-        $gnuconf=$gnuconf."set style line 20 lt 1 lw 2 pt 7 ps 0.4 lc rgbcolor \"#BD8128\"\n";
-        
+	$gnuconf=$gnuconf."set termoption font \"Courier:name 6:size\"\n\n";
+	$gnuconf=$gnuconf."set key center bottom outside vertical samplen 10 spacing 1.1\n\n";
 	
+	$gnuconf=$gnuconf.$style."\n\n";
+		
 	$gnuconf=$gnuconf.$plotstring."\n\n";
 	if($Param->{debug} >0 ){
 	    print $gnuconf;
@@ -3499,7 +3752,6 @@ sub GnuPlotConfStats($$$){
     #print $plotstring;
     return $gnuconf;
 }
-
 
 ######################################################################
 ##
@@ -3858,12 +4110,12 @@ $baseSP = $baseSP.",threads_cached|0,threads_connected|0,threads_created,threads
 $baseSP = $baseSP.",wsrep_last_committed,wsrep_replicated,wsrep_replicated_bytes,wsrep_received,wsrep_received_bytes,wsrep_local_commits,wsrep_local_cert_failures,wsrep_local_bf_aborts";
 $baseSP = $baseSP.",wsrep_local_replays,wsrep_local_send_queue,wsrep_local_send_queue_avg,wsrep_local_recv_queue,wsrep_local_recv_queue_avg,wsrep_flow_control_paused";
 $baseSP = $baseSP.",wsrep_flow_control_sent,wsrep_flow_control_recv,wsrep_cert_deps_distance|0,wsrep_apply_oooe,wsrep_apply_oool,wsrep_apply_window|0,wsrep_commit_oooe";
-$baseSP = $baseSP.",wsrep_commit_oool,wsrep_commit_window|0,wsrep_local_state,wsrep_cert_index_size,wsrep_cluster_conf_id,wsrep_cluster_size,wsrep_evs_repl_latency|0";
-
+$baseSP = $baseSP.",wsrep_commit_oool,wsrep_commit_window|0,wsrep_local_state,wsrep_cert_index_size,wsrep_cluster_conf_id,wsrep_cluster_size";
+$baseSP = $baseSP.",wsrep_evs_repl_latency|0,wsrep_evs_repl_latencyMin|0,wsrep_evs_repl_latencyMax|0,wsrep_evs_repl_latencyAvg|0";
 
 
 my $slaveSP=",Seconds_Behind_Master|0,ProfId|0,ProfTime|0,ProfState|0";
-$slaveSP=$slaveSP.",slave_heartbeat_period,slave_open_temp_tables,slave_received_heartbeats,slave_retried_transactions,slave_running,,rpl_status";
+$slaveSP=$slaveSP.",slave_heartbeat_period,slave_open_temp_tables,slave_received_heartbeats,slave_retried_transactions,slave_running,rpl_status";
 $baseSP = $baseSP.$slaveSP;
 
 #$baseSP = $baseSP.",com_admin_commands,com_alter_db,com_alter_db_upgrade,com_alter_event,com_alter_function,com_alter_procedure,
@@ -3908,11 +4160,12 @@ $AIB_Cacti= $AIB_Cacti.",AIB_pending_aio_sync_ios|0,AIB_pending_log_flushes|0,AI
 $AIB_Cacti= $AIB_Cacti.",AIB_ibuf_merges|0,AIB_log_bytes_written|1,AIB_unflushed_log|0,AIB_log_bytes_flushed|1,AIB_pending_log_writes|0,AIB_pending_chkp_writes|0,AIB_log_writes|1,AIB_pool_size|0";
 $AIB_Cacti= $AIB_Cacti.",AIB_free_pages|0,AIB_database_pages|0,AIB_modified_pages|0,AIB_pages_read|1,AIB_pages_created|1,AIB_pages_written|1,AIB_queries_inside|0,AIB_queries_queued|0,AIB_read_views|0";
 $AIB_Cacti= $AIB_Cacti.",AIB_rows_inserted|1,AIB_rows_updated|1,AIB_rows_deleted|1,AIB_rows_read|1,AIB_innodb_transactions|0,AIB_unpurged_txns|0,AIB_history_list|0,AIB_current_transactions|0,AIB_active_transactions|0";
-$AIB_Cacti= $AIB_Cacti.",AIB_hash_index_cells_total|0,AIB_hash_index_cells_used|0,AIB_total_mem_alloc|0,AIB_additional_pool_alloc|0,AIB_last_checkpoint|0,AIB_uncheckpointed_bytes|0,AIB_ibuf_used_cells|1";
+$AIB_Cacti= $AIB_Cacti.",AIB_hash_index_cells_total|0,AIB_hash_index_cells_used|0,AIB_total_mem_alloc|0,AIB_additional_pool_alloc|0,AIB_ibuf_used_cells|1";
 $AIB_Cacti= $AIB_Cacti.",AIB_ibuf_free_cells|1,AIB_ibuf_cell_count|1,AIB_adaptive_hash_memory|0,AIB_page_hash_memory|0,AIB_dictionary_cache_memory|0,AIB_file_system_memory|0,AIB_lock_system_memory|0";
 $AIB_Cacti= $AIB_Cacti.",AIB_recovery_system_memory|0,AIB_thread_hash_memory|0,AIB_innodb_sem_waits|0,AIB_innodb_sem_wait_time_ms|0";
 $AIB_Cacti= $AIB_Cacti.",AIB_hash_searches|0,AIB_hash_searches_non|0";
 $AIB_Cacti= $AIB_Cacti.",slave_seconds_behind_master|0,slave_pos_write_delay|0";
+$AIB_Cacti= $AIB_Cacti.",AIB_Max_checkpoint_age|0,AIB_Checkpoint_age_target|0,AIB_Checkpoint_age|0,AIB_last_checkpoint|0,AIB_uncheckpointed_bytes|0";
 
 $baseSP = $baseSP.$AIB_Cacti;
 
