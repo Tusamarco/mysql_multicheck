@@ -658,7 +658,7 @@ if ($status =~ m/^Mutex.*/im) {
 
         #'innodb_mutexspin','innodb_mutexrounds','innodb_mutexoswait',
 } else {
-	%mutexinfo = "";
+	#${%mutexinfo} = "";
 }
 
 
