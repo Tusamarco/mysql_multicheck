@@ -4084,7 +4084,7 @@ $baseSP = $baseSP.",aborted_clients,aborted_connects,bytes_received,bytes_sent,c
 $baseSP = $baseSP.",created_tmp_tables,delayed_errors,delayed_insert_threads,delayed_writes,not_flushed_delayed_rows";
 ##$baseSP = $baseSP.",Slow_launch_threads,Slow_queries,Sort_merge_passes,Sort_range,Sort_rows,Sort_scan,Table_locks_immediate,Table_locks_waited";
 ##$baseSP = $baseSP.",Tc_log_max_pages_used,Tc_log_page_size,Tc_log_page_waits";
-##$baseSP = $baseSP.",Threads_cached,Threads_connected,Threads_created,Threads_running,Uptime,Uptime_since_flush_status";
+#$baseSP = $baseSP.",Threads_cached,Threads_connected,Threads_created,Threads_running,Uptime,Uptime_since_flush_status";
 
 $baseSP = $baseSP.",binlog_cache_disk_use,binlog_cache_use,binlog_stmt_cache_disk_use,binlog_stmt_cache_use";
 $baseSP = $baseSP.",handler_commit,handler_delete,handler_discover,handler_prepare,handler_read_first,handler_read_key,handler_read_last,handler_read_next,handler_read_prev";
@@ -4107,11 +4107,22 @@ $baseSP = $baseSP.",threads_cached|0,threads_connected|0,threads_created,threads
 #=======================================
 # GALERA Monitor
 #=======================================
-$baseSP = $baseSP.",wsrep_last_committed,wsrep_replicated,wsrep_replicated_bytes,wsrep_received,wsrep_received_bytes,wsrep_local_commits,wsrep_local_cert_failures,wsrep_local_bf_aborts";
-$baseSP = $baseSP.",wsrep_local_replays,wsrep_local_send_queue,wsrep_local_send_queue_avg,wsrep_local_recv_queue,wsrep_local_recv_queue_avg,wsrep_flow_control_paused";
-$baseSP = $baseSP.",wsrep_flow_control_sent,wsrep_flow_control_recv,wsrep_cert_deps_distance|0,wsrep_apply_oooe,wsrep_apply_oool,wsrep_apply_window|0,wsrep_commit_oooe";
-$baseSP = $baseSP.",wsrep_commit_oool,wsrep_commit_window|0,wsrep_local_state,wsrep_cert_index_size,wsrep_cluster_conf_id,wsrep_cluster_size";
-$baseSP = $baseSP.",wsrep_evs_repl_latency|0,wsrep_evs_repl_latencyMin|0,wsrep_evs_repl_latencyMax|0,wsrep_evs_repl_latencyAvg|0";
+#$baseSP = $baseSP.",wsrep_last_committed,wsrep_replicated,wsrep_replicated_bytes,wsrep_received,wsrep_received_bytes,wsrep_local_commits,wsrep_local_cert_failures,wsrep_local_bf_aborts";
+#$baseSP = $baseSP.",wsrep_local_replays,wsrep_local_send_queue,wsrep_local_send_queue_avg,wsrep_local_recv_queue,wsrep_local_recv_queue_avg,wsrep_flow_control_paused";
+#$baseSP = $baseSP.",wsrep_flow_control_sent,wsrep_flow_control_recv,wsrep_cert_deps_distance|0,wsrep_apply_oooe,wsrep_apply_oool,wsrep_apply_window|0,wsrep_commit_oooe";
+#$baseSP = $baseSP.",wsrep_commit_oool,wsrep_commit_window|0,wsrep_local_state,wsrep_cert_index_size,wsrep_cluster_conf_id,wsrep_cluster_size";
+#$baseSP = $baseSP.",wsrep_evs_repl_latency|0,wsrep_evs_repl_latencyMin|0,wsrep_evs_repl_latencyMax|0,wsrep_evs_repl_latencyAvg|0";
+#
+$baseSP = $baseSP."wsrep_protocol_version|0,wsrep_last_committed|1,wsrep_replicated|1,wsrep_replicated_bytes|1,wsrep_repl_keys|1,wsrep_repl_keys_bytes|1,wsrep_repl_data_bytes|1";
+$baseSP = $baseSP.",wsrep_repl_other_bytes|1,wsrep_received|1,wsrep_received_bytes|1,wsrep_local_commits|1,wsrep_local_cert_failures|1,wsrep_local_replays|1,wsrep_local_send_queue|1";
+$baseSP = $baseSP.",wsrep_local_send_queue_max|1,wsrep_local_send_queue_min|1,wsrep_local_send_queue_avg|1,wsrep_local_recv_queue|1,wsrep_local_recv_queue_max|0,wsrep_local_recv_queue_min|0";
+$baseSP = $baseSP.",wsrep_local_recv_queue_avg|0,wsrep_local_cached_downto|1,wsrep_flow_control_paused_ns|0,wsrep_flow_control_paused|0,wsrep_flow_control_sent|1,wsrep_flow_control_recv|1";
+$baseSP = $baseSP.",wsrep_cert_deps_distance|0,wsrep_apply_oooe|1,wsrep_apply_oool|1,wsrep_apply_window|1,wsrep_commit_oooe|1,wsrep_commit_oool|1,wsrep_commit_window|0";
+$baseSP = $baseSP.",wsrep_cert_index_size|0,wsrep_cert_bucket_count|0,wsrep_gcache_pool_size|0,wsrep_causal_reads|0,wsrep_cert_interval|0,wsrep_incoming_addresses|0,wsrep_desync_count|0";
+$baseSP = $baseSP.",wsrep_evs_delayed|0,wsrep_evs_evict_list|0,wsrep_evs_repl_latency|0,wsrep_local_bf_aborts|1,wsrep_local_index|0";
+$baseSP = $baseSP.",wsrep_evs_repl_latencyMin|0,wsrep_evs_repl_latencyMax|0,wsrep_evs_repl_latencyAvg|0";
+
+
 
 
 my $slaveSP=",Seconds_Behind_Master|0,ProfId|0,ProfTime|0,ProfState|0";
@@ -4143,8 +4154,7 @@ $baseSP = $baseSP.$slaveSP;
 
 
 
-#$baseSP = $baseSP.",ssl_accept_renegotiates,ssl_accepts,ssl_callback_cache_hits,ssl_cipher,ssl_cipher_list,ssl_client_connects,ssl_connect_renegotiates,ssl_ctx_verify_depth,ssl_ctx_verify_mode,ssl_default_timeout,ssl_finished_accepts,ssl_finished_connects,ssl_session_cache_hits,ssl_session_cache_misses,ssl_session_cache_mode,ssl_session_cache_overflows,ssl_session_cache_size,ssl_session_cache_timeouts,ssl_sessions_reused,ssl_used_session_cache_entries,ssl_verify_depth,      
-#ssl_verify_mode,ssl_version";
+$baseSP = $baseSP.",ssl_accept_renegotiates,ssl_accepts,ssl_callback_cache_hits,ssl_cipher,ssl_cipher_list,ssl_client_connects,ssl_connect_renegotiates,ssl_ctx_verify_depth,ssl_ctx_verify_mode,ssl_default_timeout,ssl_finished_accepts,ssl_finished_connects,ssl_session_cache_hits,ssl_session_cache_misses,ssl_session_cache_mode,ssl_session_cache_overflows,ssl_session_cache_size,ssl_session_cache_timeouts,ssl_sessions_reused,ssl_used_session_cache_entries,ssl_verify_depth,ssl_verify_mode,ssl_version";
 
 my $IB_Special="";
 
