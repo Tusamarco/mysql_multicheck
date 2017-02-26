@@ -3268,13 +3268,26 @@ GNU_STYLE
                 #plot "Connections.csv" u 1:($3)  w l ,
                 if ($plotstring eq "")
                 {
-                    $plotstring=$prePlotstring."set boxwidth 50.50 absolute \nset style fill solid 10.00 border \n plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w boxes lc rgb \"gray\" ";
+                    $plotstring=$prePlotstring."plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w boxes ls ".($relativePosition-1);
                 }
                 else
                 {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions  w boxes lc rgb \"gray\"";
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions  w boxes ls ".($relativePosition-1);
                 }
             }
+            elsif($position > 0 &&  $chartType eq "histograms")
+            {
+                #plot "Connections.csv" u 1:($3)  w l ,
+                if ($plotstring eq "")
+                {
+                    $plotstring=$prePlotstring."plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w histogram rowstacked ls ".($relativePosition-1);
+                }
+                else
+                {
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions  w histogram rowstacked ls ".($relativePosition-1);
+                }
+            }
+
             
             #print "\t".$key2."\n";
             #print "\t\t".$gnuparam->{$key2}."\n";
@@ -3340,6 +3353,7 @@ GNU_STYLE
 	$gnuconf=$gnuconf."set ytics\n";
 	$gnuconf=$gnuconf."set mytics 5\n";
 	$gnuconf=$gnuconf."set termoption font \"Courier:name 6:size\"\n\n";
+	$gnuconf=$gnuconf."set boxwidth 50.50 absolute \nset style fill solid border -1 \n";
 	$gnuconf=$gnuconf."set key center bottom outside vertical samplen 10 spacing 1.1\n\n";        
 	
 	$gnuconf=$gnuconf.$style."\n\n";
@@ -4113,14 +4127,14 @@ $baseSP = $baseSP.",threads_cached|0,threads_connected|0,threads_created,threads
 #$baseSP = $baseSP.",wsrep_commit_oool,wsrep_commit_window|0,wsrep_local_state,wsrep_cert_index_size,wsrep_cluster_conf_id,wsrep_cluster_size";
 #$baseSP = $baseSP.",wsrep_evs_repl_latency|0,wsrep_evs_repl_latencyMin|0,wsrep_evs_repl_latencyMax|0,wsrep_evs_repl_latencyAvg|0";
 #
-$baseSP = $baseSP."wsrep_protocol_version|0,wsrep_last_committed|1,wsrep_replicated|1,wsrep_replicated_bytes|1,wsrep_repl_keys|1,wsrep_repl_keys_bytes|1,wsrep_repl_data_bytes|1";
+$baseSP = $baseSP."wsrep_protocol_version|0,wsrep_last_committed|0,wsrep_replicated|1,wsrep_replicated_bytes|1,wsrep_repl_keys|1,wsrep_repl_keys_bytes|1,wsrep_repl_data_bytes|1";
 $baseSP = $baseSP.",wsrep_repl_other_bytes|1,wsrep_received|1,wsrep_received_bytes|1,wsrep_local_commits|1,wsrep_local_cert_failures|1,wsrep_local_replays|1,wsrep_local_send_queue|1";
 $baseSP = $baseSP.",wsrep_local_send_queue_max|1,wsrep_local_send_queue_min|1,wsrep_local_send_queue_avg|1,wsrep_local_recv_queue|1,wsrep_local_recv_queue_max|0,wsrep_local_recv_queue_min|0";
-$baseSP = $baseSP.",wsrep_local_recv_queue_avg|0,wsrep_local_cached_downto|1,wsrep_flow_control_paused_ns|0,wsrep_flow_control_paused|0,wsrep_flow_control_sent|1,wsrep_flow_control_recv|1";
+$baseSP = $baseSP.",wsrep_local_recv_queue_avg|0,wsrep_local_cached_downto|0,wsrep_flow_control_paused_ns|0,wsrep_flow_control_paused|1,wsrep_flow_control_sent|1,wsrep_flow_control_recv|1";
 $baseSP = $baseSP.",wsrep_cert_deps_distance|0,wsrep_apply_oooe|1,wsrep_apply_oool|1,wsrep_apply_window|1,wsrep_commit_oooe|1,wsrep_commit_oool|1,wsrep_commit_window|0";
 $baseSP = $baseSP.",wsrep_cert_index_size|0,wsrep_cert_bucket_count|0,wsrep_gcache_pool_size|0,wsrep_causal_reads|0,wsrep_cert_interval|0,wsrep_incoming_addresses|0,wsrep_desync_count|0";
 $baseSP = $baseSP.",wsrep_evs_delayed|0,wsrep_evs_evict_list|0,wsrep_evs_repl_latency|0,wsrep_local_bf_aborts|1,wsrep_local_index|0";
-$baseSP = $baseSP.",wsrep_evs_repl_latencyMin|0,wsrep_evs_repl_latencyMax|0,wsrep_evs_repl_latencyAvg|0";
+$baseSP = $baseSP.",wsrep_evs_repl_latencyMin|0,wsrep_evs_repl_latencyMax|0,wsrep_evs_repl_latencyAvg|0,wsrep_cluster_conf_id,wsrep_cluster_size";
 
 
 
