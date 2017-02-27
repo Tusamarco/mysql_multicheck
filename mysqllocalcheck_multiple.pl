@@ -1051,6 +1051,19 @@ if( defined $Param->{outfile}){
 
 
 sub print_report_column(){
+    my $fullname = $Param->{outfile};
+    my $filenameH = "headers_";
+    my $filenameAwk = "awk_";
+    my $filenameGNU = "gnu_";
+    my $volume;
+    my $directories;
+    my $file;
+    ($volume, $directories, $file) = File::Spec->splitpath($fullname);
+    $filenameH = $directories.$filenameH.$file;
+    $filenameAwk = $directories.$filenameAwk.$file;
+    $filenameGNU = $directories.$filenameGNU.$file;
+    my $FILEOUT_TMP;
+    
     my $header ;
     $header = "1:date\n2:time\n";
     my $indicator;
@@ -1075,7 +1088,11 @@ sub print_report_column(){
         }
     }
    
-    print $header."\n";
+    open  $FILEOUT_TMP , '>', $filenameH;
+    $FILEOUT_TMP->autoflush(1);
+    print $FILEOUT_TMP $header."\n";
+    $FILEOUT_TMP->flush;
+    close $FILEOUT_TMP;
     
     if ($Param->{creategnuplot} == 1)
     {
@@ -1083,16 +1100,42 @@ sub print_report_column(){
         my $gnuplotfile = $dir.'/gnuplot_graphs.ini';
         my $cfg = new ConfigIniSimple();
         $cfg->read($gnuplotfile);
+	my $awk ="";
+	my $gnu ="";
+
 
         my @returnvalues = GnuPlotGenerator($Param,$headerMap,$cfg);
 	if(@returnvalues > 0){
-	    print $returnvalues[0];
-	    print $returnvalues[1];
+	    
+	    $awk = $awk.$returnvalues[0]."\n";
+	    $gnu = $gnu . $returnvalues[1]."\n";
+	    #print $returnvalues[0];
+	    #print $returnvalues[1];
 	}
         if ($Param->{sysstats} == 1)
         {
-            PrintSystatGnufile($cfg,$Param->{hwsys_stats},$cfg);
+           @returnvalues =  PrintSystatGnufile($cfg,$Param->{hwsys_stats},$cfg);
+	    if(@returnvalues > 0){
+		
+		$awk = $awk.$returnvalues[0]."\n";
+		$gnu = $gnu.$returnvalues[1]."\n";
+		#print $returnvalues[0];
+		#print $returnvalues[1];
+	    }
+	   
         }
+
+	    open  $FILEOUT_TMP , '>', $filenameAwk;
+	    $FILEOUT_TMP->autoflush(1);
+	    print $FILEOUT_TMP $awk."\n";
+	    $FILEOUT_TMP->flush;
+	    close $FILEOUT_TMP;
+
+	    open  $FILEOUT_TMP , '>', $filenameGNU;
+	    $FILEOUT_TMP->autoflush(1);
+	    print $FILEOUT_TMP $gnu."\n";
+	    $FILEOUT_TMP->flush;
+	    close $FILEOUT_TMP;
         
     }
 
@@ -3645,10 +3688,13 @@ sub PrintSystatGnufile($$){
 	}
 
     }
-    print "\n\n ----------------------------------- STATISTICS -----------------------------\n";
+    #print "\n\n ----------------------------------- STATISTICS -----------------------------\n";
     
-    print $awkposition;
-    print $gnuconf;
+    $returnvalues[0]= $awkposition;
+    $returnvalues[1]= $gnuconf;
+    return @returnvalues;
+    #print $awkposition;
+    #print $gnuconf;
 }
 
 sub GnuPlotConfStats($$$){
