@@ -3390,7 +3390,7 @@ GNU_STYLE
 
 	$gnuconf=$gnuconf."set auto x\n";
 	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
-        $gnuconf=$gnuconf."set format y \"%s\"\n";
+        $gnuconf=$gnuconf."set format y \"%20.0f\"\n";
 	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq font \"Courier:name 6:size\"\n";
         $gnuconf=$gnuconf."set mxtics 4\n";
 	$gnuconf=$gnuconf."set ytics\n";
@@ -3787,7 +3787,7 @@ GNU_STYLE
 
 	$gnuconf=$gnuconf."set auto x\n";
 	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
-        $gnuconf=$gnuconf."set format y \"%s\"\n";
+        $gnuconf=$gnuconf."set format y \"%20.0f\"\n";
 	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq font \"Courier:name 6:size\"\n";
         $gnuconf=$gnuconf."set mxtics 4\n";
 	$gnuconf=$gnuconf."set ytics\n";
@@ -4180,7 +4180,7 @@ $baseSP = $baseSP.",wsrep_local_recv_queue_avg|0,wsrep_local_cached_downto|0,wsr
 $baseSP = $baseSP.",wsrep_cert_deps_distance|0,wsrep_apply_oooe|1,wsrep_apply_oool|1,wsrep_apply_window|1,wsrep_commit_oooe|1,wsrep_commit_oool|1,wsrep_commit_window|0";
 $baseSP = $baseSP.",wsrep_cert_index_size|0,wsrep_cert_bucket_count|0,wsrep_gcache_pool_size|0,wsrep_causal_reads|0,wsrep_cert_interval|0,wsrep_incoming_addresses|0,wsrep_desync_count|0";
 $baseSP = $baseSP.",wsrep_evs_delayed|0,wsrep_evs_evict_list|0,wsrep_evs_repl_latency|0,wsrep_local_bf_aborts|1,wsrep_local_index|0";
-$baseSP = $baseSP.",wsrep_evs_repl_latencyMin|0,wsrep_evs_repl_latencyMax|0,wsrep_evs_repl_latencyAvg|0,wsrep_cluster_conf_id,wsrep_cluster_size";
+$baseSP = $baseSP.",wsrep_evs_repl_latencyMin|0,wsrep_evs_repl_latencyMax|0,wsrep_evs_repl_latencyAvg|0,wsrep_cluster_conf_id,wsrep_cluster_size|0";
 
 
 
