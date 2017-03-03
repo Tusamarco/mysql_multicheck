@@ -3486,7 +3486,14 @@ sub PrintSystatGnufile($$){
     $position = 3; 
     
     #
-    @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
+#    @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
+    
+    @StatsToRead = ("netstats_packages","netstats_bytes","netstats_errors","netstats_other","diskstats_bytes","diskstats_ops","cpustats_use","cpustats_interrupts",
+"diskusage_kb","diskusage_%","processes_mysql_stats_kernel_user","processes_mysql_stats_Mem_usage","processes_mysql_mem_pages","processes_mysql_stats_process_running",
+"processes_mysql_stats_bytes_read_written_fromHD","processes_mysql_stats_SysCall_read_written_fromHD");
+
+
+    
     #,"diskstatsOperation","diskstatsBytes","cpustatsActivity","cpustatsIrq","processStats","memstatsSwap","memstatsPageFs" ,"memstatsUsage" );
     #"processes"
     #"diskstatsOperation","diskstatsBytes","cpustatsActivity","cpustatsIrq","processStats","memstatsSwap","memstatsPageFs" ,"memstatsUsage" 
@@ -3614,7 +3621,8 @@ sub PrintSystatGnufile($$){
 	}
     }
 
-    @StatsToRead = ("memstats","mem_committed","swap","pgswstats");
+    #@StatsToRead = ("memstats","mem_committed","swap","pgswstats");
+    @StatsToRead =("memstats_%","memstats_used","swap","mem_committed","pgswstats");
     
     foreach my $mainkey (sort @StatsToRead ){
         $relativePosition =2;
@@ -3694,7 +3702,7 @@ sub PrintSystatGnufile($$){
 			$plotstring = $plotstring.", ";
 		    }                
 
-		    $statstring=$statstring."stats \"".$mainkey.".csv\" using 1:(\$$relativePosition$) name 'stat_col".$relativePosition."' nooutput \n";
+		    $statstring=$statstring."stats \"".$mainkey.".csv\" using 1:(\$$relativePosition) name 'stat_col".$relativePosition."' nooutput \n";
 		    $statstringPrint=$statstringPrint."col".
 		    $relativePosition." = sprintf('%28s |Min:%10.1f |Max:%10.1f |Avg:%10.1f |StdDev:%10.1f |Upper75:%10.1f', '$varName',stat_col".$relativePosition."_min_y, stat_col"
 			.$relativePosition."_max_y, stat_col"
