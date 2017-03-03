@@ -3254,12 +3254,12 @@ sub PrintGnufile($$){
                 #plot "Connections.csv" u 1:($3)  w l ,
                 if ($plotstring eq "")
                 {
-                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$(column('.$varName.'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$(column('$varName'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
 		    .($relativePosition +100)." title col".($relativePosition) ;
                 }
                 else
                 {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$(column('.$varName.'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$(column('$varName'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
 		    .($relativePosition +100)." title col".($relativePosition) ;
                 }
 		$relativePosition++;
@@ -3292,6 +3292,8 @@ sub PrintGnufile($$){
 set xlabel "$gnuparam->{xaxis}" offset 0,4,0
 set ylabel "$gnuparam->{yaxis}" offset 12,0,0
 set datafile separator " "
+
+$statstring
 
 set timefmt "%Y-%m-%d %H:%M:%S"
 #set logscale # turn on double logarithmic plotting
@@ -3740,6 +3742,8 @@ sub GnuPlotConfStats($$$$$$){
 set xlabel "Time" offset 0,4,0
 set ylabel "$gnuplotConf->{yaxis}" offset 12,0,0
 set datafile separator " "
+
+$statstring
 
 set timefmt "%Y-%m-%d %H:%M:%S"
 #set logscale # turn on double logarithmic plotting
