@@ -3488,9 +3488,7 @@ sub PrintSystatGnufile($$){
     #
 #    @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
     
-    @StatsToRead = ("netstats_packages","netstats_bytes","netstats_errors","netstats_other","diskstats_bytes","diskstats_ops","cpustats_use","cpustats_interrupts",
-"diskusage_kb","diskusage_%","processes_mysql_stats_kernel_user","processes_mysql_stats_Mem_usage","processes_mysql_mem_pages","processes_mysql_stats_process_running",
-"processes_mysql_stats_bytes_read_written_fromHD","processes_mysql_stats_SysCall_read_written_fromHD");
+    @StatsToRead = ("netstats_packages","netstats_bytes","netstats_errors","netstats_other","diskstats_bytes","diskstats_ops","cpustats_use","cpustats_interrupts","diskusage_kb","diskusage_%","processes_mysql_stats_kernel_user","processes_mysql_stats_Mem_usage","processes_mysql_mem_pages","processes_mysql_stats_process_running","processes_mysql_stats_bytes_read_written_fromHD","processes_mysql_stats_SysCall_read_written_fromHD");
 
 
     
