@@ -3694,7 +3694,7 @@ sub PrintSystatGnufile($$){
 			$plotstring = $plotstring.", ";
 		    }                
 
-		    $statstring=$statstring."stats \"".$mainkey.".csv\" using 1:(\$relativePosition$) name 'stat_col".$relativePosition."' nooutput \n";
+		    $statstring=$statstring."stats \"".$mainkey.".csv\" using 1:(\$$relativePosition$) name 'stat_col".$relativePosition."' nooutput \n";
 		    $statstringPrint=$statstringPrint."col".
 		    $relativePosition." = sprintf('%28s |Min:%10.1f |Max:%10.1f |Avg:%10.1f |StdDev:%10.1f |Upper75:%10.1f', '$varName',stat_col".$relativePosition."_min_y, stat_col"
 			.$relativePosition."_max_y, stat_col"
