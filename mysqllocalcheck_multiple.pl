@@ -3826,47 +3826,6 @@ GNUCONF
 	$gnuconf=$gnuconf.$statstringPrint."\n\n";
 	$gnuconf=$gnuconf.$plotstring."\n\n";
 
-#	$gnuconf=$gnuconf."set title \"".$title."\"\n";
-#	$gnuconf=$gnuconf."set xlabel \"time\"\n";
-#	#$gnuconf=$gnuconf."set ylabel \"".$gnuconf->{yaxis}."\"\n";
-#	$gnuconf=$gnuconf."set ylabel \"instances\"\n";
-#	$gnuconf=$gnuconf."set datafile separator \" \"\n\n";
-#	$gnuconf=$gnuconf."set timefmt \"%Y-%m-%d %H:%M:%S\"\n";
-#	$gnuconf=$gnuconf."#set logscale # turn on double logarithmic plotting\n";
-#	$gnuconf=$gnuconf."#set logscale y # for y-axis only\n";
-#	$gnuconf=$gnuconf."#set logscale x\n";
-#	$gnuconf=$gnuconf."#set xdtics 24\n\n";
-#	$gnuconf=$gnuconf."set autoscale xfixmin\n";
-#	$gnuconf=$gnuconf."set autoscale xfixmax\n";
-#	$gnuconf=$gnuconf."set xrange [0:]\n";
-#	$gnuconf=$gnuconf."set yrange [1:]\n\n";
-#            
-#	$gnuconf=$gnuconf."#set lmargin at screen 0.10\n";
-#	$gnuconf=$gnuconf."#set rmargin at screen 0.90\n";
-#	$gnuconf=$gnuconf."#set tmargin at screen 0.91\n";
-#
-#        $gnuconf=$gnuconf."set grid\n";
-#	$gnuconf=$gnuconf."set border 1\n";
-#	$gnuconf=$gnuconf."set xdata time\n";
-#	$gnuconf=$gnuconf."set key autotitle columnhead\n\n";
-#
-#        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"Courier:name 6:size\"\n";
-#        $gnuconf=$gnuconf."#set terminal x11 size 1149,861\n";
-#        $gnuconf=$gnuconf."set output \"".$mainkey.".png\"\n\n";
-#
-#	$gnuconf=$gnuconf."set auto x\n";
-#	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
-#        $gnuconf=$gnuconf."set format y \"%20.0f\"\n";
-#	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq font \"Courier:name 6:size\"\n";
-#        $gnuconf=$gnuconf."set mxtics 4\n";
-#	$gnuconf=$gnuconf."set ytics\n";
-#	$gnuconf=$gnuconf."set mytics 5\n";
-#	$gnuconf=$gnuconf."set termoption font \"Courier:name 6:size\"\n\n";
-#	$gnuconf=$gnuconf."set key center bottom outside vertical samplen 10 spacing 1.1\n\n";
-#	
-#	$gnuconf=$gnuconf.$style."\n\n";
-#		
-#	$gnuconf=$gnuconf.$plotstring."\n\n";
 	if($Param->{debug} >0 ){
 	    print $gnuconf;
 	}
