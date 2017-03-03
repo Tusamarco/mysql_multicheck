@@ -3580,9 +3580,13 @@ sub PrintSystatGnufile($$){
 			
     #$plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$(column('.$varName.'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls ".($relativePosition +100)." title col".($relativePosition) ;		    
     
-			$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") w ". $itemAttribs[0]." ls ".($relativePosition)
-			." notitle,"."1/0 ls ".($relativePosition +100)." title col".($relativePosition)   ;
+			#$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") w ". $itemAttribs[0]." ls ".($relativePosition)
+			#." notitle,"."1/0 ls ".($relativePosition +100)." title col".($relativePosition)   ;
     
+			$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\$$relativePosition/".$Param->{interval}.") w ". $itemAttribs[0]." ls ".($relativePosition)
+			." notitle,"."1/0 ls ".($relativePosition +100)." title col".($relativePosition)   ;
+
+
 			$relativePosition++;
     
 		    #    if($processElementStats == 1 && $#itemAttribs >= 0){
@@ -3699,7 +3703,10 @@ sub PrintSystatGnufile($$){
 			.$relativePosition."_up_quartile_y)\n";
 
 #$plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$(column('.$varName.'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls ".($relativePosition +100)." title col".($relativePosition) ;		    		
-		    $plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls "
+		    #$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls "
+		    #.($relativePosition)." notitle ,1/0 ls ".($relativePosition +100)." title col".($relativePosition);
+
+		    $plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\$$relativePosition/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls "
 		    .($relativePosition)." notitle ,1/0 ls ".($relativePosition +100)." title col".($relativePosition);
 		    $relativePosition++ ; 
 		}
