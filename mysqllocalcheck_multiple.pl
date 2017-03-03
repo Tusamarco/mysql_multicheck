@@ -3259,12 +3259,12 @@ sub PrintGnufile($$){
                 #plot "Connections.csv" u 1:($3)  w l ,
                 if ($plotstring eq "")
                 {
-                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$(column('$varName'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
 		    .($relativePosition +100)." title col".($relativePosition) ;
                 }
                 else
                 {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$(column('$varName'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
 		    .($relativePosition +100)." title col".($relativePosition) ;
                 }
 		$relativePosition++;
@@ -3578,7 +3578,7 @@ sub PrintSystatGnufile($$){
 			
     #$plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$(column('.$varName.'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls ".($relativePosition +100)." title col".($relativePosition) ;		    
     
-			$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\$(column('$varName'))/".$Param->{interval}.") w ". $itemAttribs[0]." ls ".($relativePosition)
+			$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") w ". $itemAttribs[0]." ls ".($relativePosition)
 			." notitle,"."1/0 ls ".($relativePosition +100)." title col".($relativePosition)   ;
     
 			$relativePosition++;
@@ -3697,7 +3697,7 @@ sub PrintSystatGnufile($$){
 			.$relativePosition."_up_quartile_y)\n";
 
 #$plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$(column('.$varName.'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls ".($relativePosition +100)." title col".($relativePosition) ;		    		
-		    $plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\$(column('$varName'))/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls "
+		    $plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls "
 		    .($relativePosition)." notitle ,1/0 ls ".($relativePosition +100)." title col".($relativePosition);
 		    $relativePosition++ ; 
 		}
