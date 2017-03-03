@@ -3514,8 +3514,10 @@ sub PrintSystatGnufile($$){
 	$statstring="";
 	
 
-	if(defined $cfg->{"Hwsys_".$mainkey}->{parent} && $cfg->{"Hwsys_".$mainkey}->{parent} ne "" ){
-	    $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent}
+	if(defined $cfg->{"Hwsys_".$mainkey}->{parent}){
+	    if(length($cfg->{"Hwsys_".$mainkey}->{parent}) > 0){
+		 $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent};
+	    }
 	}
 
 	my @xkeys = keys %{$statHeaderMap->{$stat_root}};
@@ -3641,7 +3643,7 @@ sub PrintSystatGnufile($$){
 	
 
 	if(defined $cfg->{"Hwsys_".$mainkey}->{parent} && $cfg->{"Hwsys_".$mainkey}->{parent} ne ""){
-	    $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent}
+	    $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent};
 	}
 
         foreach my $key (sort keys %{$statHeaderMap->{$stat_root}})
