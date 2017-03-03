@@ -3188,7 +3188,7 @@ sub PrintGnufile($$){
        else
        {
           if($key2 eq "y2axis"){
-            $plotstring = "set y2label \"$gnuparam->{$key2}\" offset 5,0,0 \nset y2range [0:] \nset y2tics \n set format y2 \"%14.0f\"\n".$plotstring;
+            $plotstring = "set y2label \"$gnuparam->{$key2}\" offset -5,0,0 \nset y2range [0:] \nset y2tics \n set format y2 \"%14.0f\"\n".$plotstring;
             next;
            }
 
@@ -3222,7 +3222,7 @@ sub PrintGnufile($$){
             if($#gnuparamValueArray > 0){
                 $chartType = $gnuparamValueArray[0];
                 if($#gnuparamValueArray > 1){
-                    $chartOptions = "title \"$gnuparamValueArray[1]\" "};
+                    $chartOptions = ""; #"title \"$gnuparamValueArray[1]\" "};
                 if($#gnuparamValueArray == 2){
                     $chartOptions = $chartOptions." ".$gnuparamValueArray[2]};
             }
