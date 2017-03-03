@@ -3222,7 +3222,9 @@ sub PrintGnufile($$){
             if($#gnuparamValueArray > 0){
                 $chartType = $gnuparamValueArray[0];
                 if($#gnuparamValueArray > 1){
-                    $chartOptions = ""; #"title \"$gnuparamValueArray[1]\" "};
+                    $chartOptions = "";
+		    #"title \"$gnuparamValueArray[1]\" "
+		}
                 if($#gnuparamValueArray == 2){
                     $chartOptions = $chartOptions." ".$gnuparamValueArray[2]};
             }
