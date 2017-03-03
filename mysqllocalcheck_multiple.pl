@@ -3536,11 +3536,11 @@ sub PrintSystatGnufile($$){
 		    }
 		}
     
-		foreach my $subkey (sort keys %{$statHeaderMap->{$mainkey}->{$key}}){
+		foreach my $subkey (sort keys %{$statHeaderMap->{$stat_root}->{$key}}){
 		    foreach my $cfgKey (sort keys %{$gnuplotConf}){
 			 if($filterItemC ne "" && $subkey eq $cfgKey){
 			     $processElementStats = 1;
-			     $position = $statHeaderMap->{$mainkey}->{$key}->{$subkey};
+			     $position = $statHeaderMap->{$stat_root}->{$key}->{$subkey};
 			     @itemAttribs = split(',',$gnuplotConf->{$cfgKey});
 			     last;
 			 }
