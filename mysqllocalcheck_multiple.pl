@@ -3259,12 +3259,12 @@ sub PrintGnufile($$){
                 #plot "Connections.csv" u 1:($3)  w l ,
                 if ($plotstring eq "")
                 {
-                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") $chartOptions w $chartType ls ".($relativePosition)." notitle,  1/0 ls "
 		    .($relativePosition +100)." title col".($relativePosition) ;
                 }
                 else
                 {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls "
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") $chartOptions w $chartType ls ".($relativePosition)." notitle,  1/0 ls "
 		    .($relativePosition +100)." title col".($relativePosition) ;
                 }
 		$relativePosition++;
