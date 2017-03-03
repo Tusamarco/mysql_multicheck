@@ -222,6 +222,8 @@ if( defined $Param->{outfile}
     ($volume, $directories, $file) = File::Spec->splitpath($fullname);
     $Param->{stattfile} = $directories.$filename.$file;
 
+    $Param->{result_stats}=$file;
+    $Param->{result_sysstats}="sysstat_".$file;
     #my $basename = basename($fullname, my @suffixlist);
     #my $dirname  = dirname($fullname);    
     
@@ -262,6 +264,9 @@ else{
 
     ($volume, $directories, $file) = File::Spec->splitpath($Param->{outfile});
     $Param->{stattfile} = $directories.$filename.$file;
+
+    $Param->{result_stats}=$file;
+    $Param->{result_sysstats}="sysstat_".$file;
 
 }
 if($Param->{"OS"} ne "linux"){
@@ -3275,9 +3280,9 @@ sub PrintGnufile($$){
     {
 	if($Param->{debug} >0 ){
 	    print "\n\n#----------------$gnuparam->{title}--------------------\n";
-	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{outfile}." >> ".$gnuparam->{title}.".csv \n";
+	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{result_stats}." >> data/".$gnuparam->{title}.".csv \n";
 	}
-	$awkposition = "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{outfile}." >> ".$gnuparam->{title}.".csv \n";
+	$awkposition = "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{result_stats}." >> data/".$gnuparam->{title}.".csv \n";
     }
     if( $gnuparam ne "" &&  $awkposition ne "")
     {
@@ -3594,9 +3599,9 @@ sub PrintSystatGnufile($$){
 	
 	    if($Param->{debug} >0 ){
 		print "\n\n#----------------$mainkey--------------------\n";
-		print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+		print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{result_sysstats}." >> data/".$mainkey.".csv \n";
 	    }
-	    $awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+	    $awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{result_sysstats}." >> data/".$mainkey.".csv \n";
 	    if($plotstring ne ""){
 		$gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString,$statstring,$statstringPrint,$gnuplotConf );
 	    }
@@ -3701,9 +3706,9 @@ sub PrintSystatGnufile($$){
         }
         if($Param->{debug} >0 ){
 	    print "\n\n#----------------$mainkey--------------------\n";
-	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{result_sysstats}." >> data/".$mainkey.".csv \n";
 	}
-	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{result_sysstats}." >> data/".$mainkey.".csv \n";
         if($plotstring ne ""){
 	    $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString,$statstring,$statstringPrint,$gnuplotConf);
 	}
