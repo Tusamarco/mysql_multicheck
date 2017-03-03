@@ -222,6 +222,8 @@ if( defined $Param->{outfile}
     ($volume, $directories, $file) = File::Spec->splitpath($fullname);
     $Param->{stattfile} = $directories.$filename.$file;
 
+    $Param->{result_stats}=$file;
+    $Param->{result_sysstats}="sysstat_".$file;
     #my $basename = basename($fullname, my @suffixlist);
     #my $dirname  = dirname($fullname);    
     
@@ -262,6 +264,9 @@ else{
 
     ($volume, $directories, $file) = File::Spec->splitpath($Param->{outfile});
     $Param->{stattfile} = $directories.$filename.$file;
+
+    $Param->{result_stats}=$file;
+    $Param->{result_sysstats}="sysstat_".$file;
 
 }
 if($Param->{"OS"} ne "linux"){
@@ -1028,7 +1033,7 @@ if( defined $Param->{outfile}){
                 my $varName = "";
 		$varName = $indicator->{name};
 		$varName=~  s/_([a-z|A-Z])/\U$1/g ;
-		$varName=~  s/_//g ;
+		$varName=~  s/_/ /g ;
 		$header = $header.',"'.$varName.'"';
 #		if($indicator->{name} eq "wsrep_evs_repl_latency"){
 #    		    $header = $header.',"'.$varName.'Min"';
@@ -3158,6 +3163,8 @@ sub PrintGnufile($$){
     my $gnuparam = shift;
     my $HeadersMap = shift;
     my $plotstring="";
+    my $statstring = "";
+    my $statstringPrint = ""; 
     my $awkposition ="";
     my $gnuconf="";
     my @returnvalues;
@@ -3169,7 +3176,167 @@ sub PrintGnufile($$){
 	$parent = $gnuparam->{parent} ; 
     }
     
-    my $style = <<"GNU_STYLE";
+    foreach my $key2 (sort keys %{$gnuparam})
+    {
+       
+       
+       if ($key2 eq "yaxis"
+           || $key2 eq "xaxis")
+       {
+           print "";
+       }
+       else
+       {
+          if($key2 eq "y2axis"){
+            $plotstring = "set y2label \"$gnuparam->{$key2}\" offset -5,0,0 \nset y2range [0:] \nset y2tics \n set format y2 \"%14.0f\"\n".$plotstring;
+            next;
+           }
+
+        
+            my $position = 0;
+            #if( (defined $HeadersMap->{$key2} && $HeadersMap->{$key2} ne "") || (defined $HeadersMap->{$parent} && index($key2,$parent)> -1 ))
+	    if( (defined $HeadersMap->{$key2} && $HeadersMap->{$key2} ne ""))
+            {
+                $position = $HeadersMap->{$key2};
+                if($position > 0)
+                {
+                    if($awkposition eq "")
+                    {
+                        $awkposition = "\$".$position;
+                    }
+                    else
+                    {
+                        $awkposition = $awkposition.",\$".$position;
+                    }
+                }
+            }
+            
+            my @gnuparamValueArray;
+            my $chartType = "";
+            my $chartOptions ="";
+            
+            if(defined $gnuparam->{$key2}){
+                 @gnuparamValueArray=split(',',$gnuparam->{$key2});
+            }
+            
+            if($#gnuparamValueArray > 0){
+                $chartType = $gnuparamValueArray[0];
+                if($#gnuparamValueArray > 1){
+                    $chartOptions = "";
+		    #"title \"$gnuparamValueArray[1]\" "
+		}
+                if($#gnuparamValueArray == 2){
+                    $chartOptions = $chartOptions." ".$gnuparamValueArray[2]};
+            }
+            else{
+                $chartType =  $gnuparam->{$key2};
+            }
+	    
+	    my %gnuType = (
+		lines => 1,
+	        points => 1,
+		linespoints => 1,
+		histograms => 1,
+		boxes => 1,
+	    );
+	    
+	    #prepare stats
+	    my $varName = "";
+	    if($key2 ne ""){
+		$varName=$key2;
+		$varName=~  s/_([a-z|A-Z])/\U$1/g ;
+		$varName=~  s/_/ /g ;
+	    }
+            
+            if($position > 0 &&  exists $gnuType{$chartType})
+            {        
+		$statstring=$statstring."stats \"".$gnuparam->{title}.".csv\" using 1:(column('$varName')) name 'stat_col".$relativePosition."' nooutput \n";
+		$statstringPrint=$statstringPrint."col".
+		$relativePosition." = sprintf('%28s |Min:%10.1f |Max:%10.1f |Avg:%10.1f |StdDev:%10.1f |Upper75:%10.1f', '$varName',stat_col".$relativePosition."_min_y, stat_col"
+		    .$relativePosition."_max_y, stat_col"
+		    .$relativePosition."_mean_y, stat_col"
+		    .$relativePosition."_stddev_y, stat_col"
+		    .$relativePosition."_up_quartile_y)\n";
+
+                #plot "Connections.csv" u 1:($3)  w l ,
+                if ($plotstring eq "")
+                {
+                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") $chartOptions w $chartType ls ".($relativePosition)." notitle,  1/0 ls "
+		    .($relativePosition +100)." title col".($relativePosition) ;
+                }
+                else
+                {
+                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") $chartOptions w $chartType ls ".($relativePosition)." notitle,  1/0 ls "
+		    .($relativePosition +100)." title col".($relativePosition) ;
+                }
+		$relativePosition++;
+            }
+	   
+            
+            #print "\t".$key2."\n";
+            #print "\t\t".$gnuparam->{$key2}."\n";
+       }
+    }
+    
+    if( $awkposition ne "")
+    {
+	if($Param->{debug} >0 ){
+	    print "\n\n#----------------$gnuparam->{title}--------------------\n";
+	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{result_stats}." >> data/".$gnuparam->{title}.".csv \n";
+	}
+	$awkposition = "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{result_stats}." >> data/".$gnuparam->{title}.".csv \n";
+    }
+    if( $gnuparam ne "" &&  $awkposition ne "")
+    {
+	my $title = $gnuparam->{title};
+	$title =~ s/_/ /g;
+	
+	$gnuconf=$gnuconf."\n#------------$title------------------------\n";
+	$gnuconf=$gnuconf."reset \n";
+	
+	$gnuconf=$gnuconf.<<"GNUCONF";
+	set title "$title"
+set xlabel "$gnuparam->{xaxis}" offset 0,4,0
+set ylabel "$gnuparam->{yaxis}" offset 12,0,0
+set datafile separator " "
+
+$statstring
+
+set timefmt "%Y-%m-%d %H:%M:%S"
+#set logscale # turn on double logarithmic plotting
+#set logscale y # for y-axis only
+#set logscale x
+#set xdtics 24
+
+set xrange [0:]
+set yrange [0:]
+
+set lmargin at screen 0.1
+set rmargin at screen 0.91
+#set tmargin at screen 0.91
+set grid
+set border 3
+set xdata time
+#set key autotitle columnhead
+
+set term pngcairo size 1900,950 noenhanced
+set termoption font "Courier,12"
+set output "$gnuparam->{title}.png"
+
+
+set border 3
+set auto x
+set format x "%m-%d %H:%M:%S"
+set format y "%20.0f"
+set xtics rotate by -45 autofreq 
+
+set mxtics 4
+set ytics
+set mytics 5
+
+ 
+
+
 	    set style line 1 lt 1 lw 1 pt 7 ps 0.8  lc rgbcolor  "#8DB600"
 	    set style line 2 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#B3446C"
 	    set style line 3 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#F3C300"
@@ -3214,193 +3381,10 @@ sub PrintGnufile($$){
 	    set style line 120 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#654522"
 	    set style line 121 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F2F3F4"
 	    set style line 122 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#222222"
-GNU_STYLE
 
-    
-    foreach my $key2 (sort keys %{$gnuparam})
-    {
-       
-       
-       if ($key2 eq "yaxis"
-           || $key2 eq "xaxis")
-       {
-           print "";
-       }
-       else
-       {
-          if($key2 eq "y2axis"){
-            $plotstring = "set y2label \"$gnuparam->{$key2}\" \nset y2range [0:] \nset y2tics \n".$plotstring;
-            next;
-           }
-
-        
-            my $position = 0;
-            #if( (defined $HeadersMap->{$key2} && $HeadersMap->{$key2} ne "") || (defined $HeadersMap->{$parent} && index($key2,$parent)> -1 ))
-	    if( (defined $HeadersMap->{$key2} && $HeadersMap->{$key2} ne ""))
-            {
-                $position = $HeadersMap->{$key2};
-                if($position > 0)
-                {
-                    if($awkposition eq "")
-                    {
-                        $awkposition = "\$".$position;
-                    }
-                    else
-                    {
-                        $awkposition = $awkposition.",\$".$position;
-                    }
-                }
-            }
-            
-            my @gnuparamValueArray;
-            my $chartType = "";
-            my $chartOptions ="";
-            
-            if(defined $gnuparam->{$key2}){
-                 @gnuparamValueArray=split(',',$gnuparam->{$key2});
-            }
-            
-            if($#gnuparamValueArray > 0){
-                $chartType = $gnuparamValueArray[0];
-                if($#gnuparamValueArray > 1){
-                    $chartOptions = "title \"$gnuparamValueArray[1]\" "};
-                if($#gnuparamValueArray == 2){
-                    $chartOptions = $chartOptions." ".$gnuparamValueArray[2]};
-            }
-            else{
-                $chartType =  $gnuparam->{$key2};
-            }
-            
-            if($position > 0 &&  $chartType eq "lines")
-            {        
-                #plot "Connections.csv" u 1:($3)  w l ,
-                if ($plotstring eq "")
-                {
-                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition-1);
-                }
-                else
-                {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition-1);
-                }
-            }
-	    elsif($position > 0 &&  $chartType eq "points"){
-                if ($plotstring eq "")
-                {
-                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w points ls ".($relativePosition-1);
-                }
-                else
-                {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w points ls ".($relativePosition-1);
-                }
-		
-	    }
-	    elsif($position > 0 ){ 
-                if ($plotstring eq "")
-                {
-                    $plotstring="plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w ".$chartType." ls ".($relativePosition-1);
-                }
-                else
-                {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w ".$chartType." ls ".($relativePosition-1);
-                }
-		
-	    }
-
-            elsif($position > 0 &&  $chartType eq "boxes")
-            {
-                #plot "Connections.csv" u 1:($3)  w l ,
-                if ($plotstring eq "")
-                {
-                    $plotstring=$prePlotstring."plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w boxes ls ".($relativePosition-1);
-                }
-                else
-                {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions  w boxes ls ".($relativePosition-1);
-                }
-            }
-            elsif($position > 0 &&  $chartType eq "histograms")
-            {
-                #plot "Connections.csv" u 1:($3)  w l ,
-                if ($plotstring eq "")
-                {
-                    $plotstring=$prePlotstring."plot \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions w histogram rowstacked ls ".($relativePosition-1);
-                }
-                else
-                {
-                    $plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") $chartOptions  w histogram rowstacked ls ".($relativePosition-1);
-                }
-            }
-
-            
-            #print "\t".$key2."\n";
-            #print "\t\t".$gnuparam->{$key2}."\n";
-       }
-    }
-    
-    if( $awkposition ne "")
-    {
-	if($Param->{debug} >0 ){
-	    print "\n\n#----------------$gnuparam->{title}--------------------\n";
-	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{outfile}." >> ".$gnuparam->{title}.".csv \n";
-	}
-	$awkposition = "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{outfile}." >> ".$gnuparam->{title}.".csv \n";
-    }
-    if( $gnuparam ne "" &&  $awkposition ne "")
-    {
-	my $title = $gnuparam->{title};
-	$title =~ s/_/ /g;
-	
-	$gnuconf=$gnuconf."\n#------------$title------------------------\n";
-	$gnuconf=$gnuconf."reset \n";
-	$gnuconf=$gnuconf."set title \"".$title."\"\n";
-	$gnuconf=$gnuconf."set xlabel \"".$gnuparam->{xaxis}."\"\n";
-	$gnuconf=$gnuconf."set ylabel \"".$gnuparam->{yaxis}."\"\n";
-	$gnuconf=$gnuconf."set datafile separator \" \"\n\n";
-	$gnuconf=$gnuconf."set timefmt \"%Y-%m-%d %H:%M:%S\"\n";
-	$gnuconf=$gnuconf."#set logscale # turn on double logarithmic plotting\n";
-	$gnuconf=$gnuconf."#set logscale y # for y-axis only\n";
-	$gnuconf=$gnuconf."#set logscale x\n";
-	$gnuconf=$gnuconf."#set xdtics 24\n\n";
-	#$gnuconf=$gnuconf."set title \"".$gnuparam->{title}."\"\n";
-	#$gnuconf=$gnuconf."set xlabel \"time\"\n";
-	#$gnuconf=$gnuconf."set ylabel \"instances\"\n";
-	#$gnuconf=$gnuconf."set datafile separator \" \"\n\n";
-	#$gnuconf=$gnuconf."set timefmt \"%Y-%m-%d %H:%M:%S\"\n";
-	#$gnuconf=$gnuconf."#set logscale # turn on double logarithmic plotting\n";
-	#$gnuconf=$gnuconf."#set logscale y # for y-axis only\n";
-	#$gnuconf=$gnuconf."#set logscale x\n";
-	#$gnuconf=$gnuconf."#set xdtics 24\n\n";
-	#$gnuconf=$gnuconf."set autoscale xfixmin\n";
-	#$gnuconf=$gnuconf."set autoscale xfixmax\n";
-	$gnuconf=$gnuconf."set xrange [0:]\n";
-	$gnuconf=$gnuconf."set yrange [0:]\n\n";
-            
-	$gnuconf=$gnuconf."set lmargin at screen 0.10\n";
-	$gnuconf=$gnuconf."set rmargin at screen 0.90\n";
-	$gnuconf=$gnuconf."set tmargin at screen 0.91\n";
-
-        $gnuconf=$gnuconf."set grid\n";
-	$gnuconf=$gnuconf."set border 1\n";
-	$gnuconf=$gnuconf."set xdata time\n";
-	$gnuconf=$gnuconf."set key autotitle columnhead\n\n";
-
-        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"Courier:name 6:size\"\n";
-        $gnuconf=$gnuconf."#set terminal x11 size 1149,861\n";
-        $gnuconf=$gnuconf."set output \"".$gnuparam->{title}.".png\"\n\n";
-
-	$gnuconf=$gnuconf."set auto x\n";
-	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
-        $gnuconf=$gnuconf."set format y \"%20.0f\"\n";
-	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq font \"Courier:name 6:size\"\n";
-        $gnuconf=$gnuconf."set mxtics 4\n";
-	$gnuconf=$gnuconf."set ytics\n";
-	$gnuconf=$gnuconf."set mytics 5\n";
-	$gnuconf=$gnuconf."set termoption font \"Courier:name 6:size\"\n\n";
-	$gnuconf=$gnuconf."set boxwidth 50.50 absolute \nset style fill solid border -1 \n";
-	$gnuconf=$gnuconf."set key center bottom outside vertical samplen 10 spacing 1.1\n\n";        
-	
-	$gnuconf=$gnuconf.$style."\n\n";
-	
+set key center bottom outside vertical samplen 10 spacing 1.1 box 3 
+GNUCONF
+	$gnuconf=$gnuconf.$statstringPrint."\n\n";
 	$gnuconf=$gnuconf.$plotstring."\n\n";
 	
 	if($Param->{debug} >0 ){
@@ -3424,9 +3408,12 @@ sub PrintSystatGnufile($$){
     my $cfg = shift;
     my $lxs = shift;
     my $awkposition ="";
-    my $gnuconf=shift;
+    my $gnuconf="";
     my @returnvalues;
     my $relativePosition =2;
+    my $statstring = "";
+    my $statstringPrint = ""; 
+
 
     my ($CurrentDate,$CurrentTime);
     my $mysqlpid ;
@@ -3499,7 +3486,12 @@ sub PrintSystatGnufile($$){
     $position = 3; 
     
     #
-    @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
+#    @StatsToRead = ("netstats","diskstats","cpustats","diskusage","processes");
+    
+    @StatsToRead = ("netstats_packages","netstats_bytes","netstats_errors","netstats_other","diskstats_bytes","diskstats_ops","cpustats_use","cpustats_interrupts","diskusage_kb","diskusage_%","processes_mysql_stats_kernel_user","processes_mysql_stats_Mem_usage","processes_mysql_mem_pages","processes_mysql_stats_process_running","processes_mysql_stats_bytes_read_written_fromHD","processes_mysql_stats_SysCall_read_written_fromHD");
+
+
+    
     #,"diskstatsOperation","diskstatsBytes","cpustatsActivity","cpustatsIrq","processStats","memstatsSwap","memstatsPageFs" ,"memstatsUsage" );
     #"processes"
     #"diskstatsOperation","diskstatsBytes","cpustatsActivity","cpustatsIrq","processStats","memstatsSwap","memstatsPageFs" ,"memstatsUsage" 
@@ -3507,7 +3499,7 @@ sub PrintSystatGnufile($$){
     foreach my $mainkey (sort @StatsToRead ){
         $relativePosition =2;
         my $awkpositionLocal ="";
-        my $plotstring="" ;
+        my $plotstring="plot " ;
         my @filters = defined $cfg->{"Hwsys_".$mainkey}?split(',',$cfg->{"Hwsys_".$mainkey}->{filter}):"na";
         my $gnuplotConf;
         my $processStats = 0;
@@ -3516,98 +3508,126 @@ sub PrintSystatGnufile($$){
         my @itemAttribs;
         my $filterItemC="";
 	my $stat_root=$mainkey;
+	$statstringPrint="";
+	$statstring="";
 	
 
-	if(defined $cfg->{"Hwsys_".$mainkey}->{parent} && $cfg->{"Hwsys_".$mainkey}->{parent} ne "" ){
-	    $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent}
-	}
-
-        foreach my $key (sort keys %{$statHeaderMap->{$stat_root}})
-        {   #print "$mainkey $key \n";
-            foreach my $filterItem (sort @filters){
-                if($key eq $filterItem || $filterItem eq '*'){
-                    $processStats = 1;
-                    $filterItemC = $filterItem;
-                    $filterString = $filterString."_".$filterItem;
-                    $gnuplotConf = $cfg->{"Hwsys_".$mainkey};
-                    last;
-                }
-                else{
-                    $filterItemC="";  
-                }
-            }
-
-	    foreach my $subkey (sort keys %{$statHeaderMap->{$mainkey}->{$key}}){
-		foreach my $cfgKey (sort keys %{$gnuplotConf}){
-		     if($filterItemC ne "" && $subkey eq $cfgKey){
-			 $processElementStats = 1;
-			 $position = $statHeaderMap->{$mainkey}->{$key}->{$subkey};
-			 @itemAttribs = split(',',$gnuplotConf->{$cfgKey});
-			 last;
-		     }
-		     else{
-			 $processElementStats = 0;
-			 $position=3;
-		     }
-		 }
-
-		if($position > 2 && $processElementStats == 1)
-		{
-		    if($awkpositionLocal eq "")
-		    {
-			$awkpositionLocal = "\$".$position;
-		    }
-		    else
-		    {
-			$awkpositionLocal = $awkpositionLocal.",\$".$position;
-		    }
-		}
-		if ($plotstring eq "" && $processElementStats == 1)
-		{
-		    #print $#itemAttribs."   ".$itemAttribs[0];
-		    if($processElementStats == 1
-		       && $#itemAttribs >= 0
-		       ){
-			$plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls ".($relativePosition-1);
-		    }
-		    elsif($processElementStats == 1 && $#itemAttribs >= 1) {
-			$plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") title ". $itemAttribs[0]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
-		    }
-		    else{
-			$relativePosition++;
-		    }
-		}
-		elsif($processElementStats == 1)
-		{
-		    if($processElementStats == 1 && $#itemAttribs >= 0){
-			$plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls ".($relativePosition-1);
-		    }
-		    elsif($processElementStats == 1 && $#itemAttribs >= 1){
-			$plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") title ". $itemAttribs[0]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
-		    }
-		    else{
-			$relativePosition++;
-		    }
-		}
-		#$position++ ;
+	if(defined $cfg->{"Hwsys_".$mainkey}->{parent}){
+	    if(length($cfg->{"Hwsys_".$mainkey}->{parent}) > 0){
+		 $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent};
 	    }
-        }
-        if($Param->{debug} >0 ){
-	    print "\n\n#----------------$mainkey--------------------\n";
-	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
 	}
-	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
-        if($plotstring ne ""){
-	    $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString);
+
+	my @xkeys = keys %{$statHeaderMap->{$stat_root}};
+	
+	if($#xkeys > 0){
+	    foreach my $key (sort keys %{$statHeaderMap->{$stat_root}})
+	    {   #print "$mainkey $key \n";
+		foreach my $filterItem (sort @filters){
+		    if($key eq $filterItem || $filterItem eq '*'){
+			$processStats = 1;
+			$filterItemC = $filterItem;
+			$filterString = $filterString."_".$filterItem;
+			$gnuplotConf = $cfg->{"Hwsys_".$mainkey};
+			last;
+		    }
+		    else{
+			$filterItemC="";  
+		    }
+		}
+    
+		foreach my $subkey (sort keys %{$statHeaderMap->{$stat_root}->{$key}}){
+		    foreach my $cfgKey (sort keys %{$gnuplotConf}){
+			 if($filterItemC ne "" && $subkey eq $cfgKey){
+			     $processElementStats = 1;
+			     $position = $statHeaderMap->{$stat_root}->{$key}->{$subkey};
+			     @itemAttribs = split(',',$gnuplotConf->{$cfgKey});
+			     last;
+			 }
+			 else{
+			     $processElementStats = 0;
+			     $position=3;
+			 }
+		     }
+    
+		    my $varName = "";
+    
+		    if($position > 2 && $processElementStats == 1)
+		    {
+			if($awkpositionLocal eq "")
+			{
+			    $awkpositionLocal = "\$".$position;
+			}
+			else
+			{
+			    $awkpositionLocal = $awkpositionLocal.",\$".$position;
+			}
+    
+		    if($subkey ne ""){
+			$varName=$subkey;
+			$varName=~  s/_([a-z|A-Z])/\U$1/g ;
+			$varName=~  s/_/ /g ;
+		    }
+    
+		    }
+		    if($processElementStats == 1)
+		    {
+			$statstring=$statstring."stats \"".$mainkey.".csv\" using 1:(\$$relativePosition) name 'stat_col".$relativePosition."' nooutput \n";
+			$statstringPrint=$statstringPrint."col".
+			$relativePosition." = sprintf('%28s |Min:%10.1f |Max:%10.1f |Avg:%10.1f |StdDev:%10.1f |Upper75:%10.1f', '$varName',stat_col".$relativePosition."_min_y, stat_col"
+			    .$relativePosition."_max_y, stat_col"
+			    .$relativePosition."_mean_y, stat_col"
+			    .$relativePosition."_stddev_y, stat_col"
+			    .$relativePosition."_up_quartile_y)\n";
+    
+			if($plotstring ne "plot "){
+			    $plotstring = $plotstring.", ";
+			}
+			
+			
+    #$plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$(column('.$varName.'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls ".($relativePosition +100)." title col".($relativePosition) ;		    
+    
+			#$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.") w ". $itemAttribs[0]." ls ".($relativePosition)
+			#." notitle,"."1/0 ls ".($relativePosition +100)." title col".($relativePosition)   ;
+    
+			$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\$$relativePosition/".$Param->{interval}.") w ". $itemAttribs[0]." ls ".($relativePosition)
+			." notitle,"."1/0 ls ".($relativePosition +100)." title col".($relativePosition)   ;
+
+
+			$relativePosition++;
+    
+		    #    if($processElementStats == 1 && $#itemAttribs >= 0){
+		    #	$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls ".($relativePosition-1);
+		    #    }
+		    #    elsif($processElementStats == 1 && $#itemAttribs >= 1){
+		    #	$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.") title ". $itemAttribs[0]. " ". $#itemAttribs ==2?$itemAttribs[2]:""  ;
+		    #    }
+		    #    else{
+		    #	$relativePosition++;
+		    #    }
+		    }
+		    #$position++ ;
+		}
+	    }
+	
+	    if($Param->{debug} >0 ){
+		print "\n\n#----------------$mainkey--------------------\n";
+		print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{result_sysstats}." >> data/".$mainkey.".csv \n";
+	    }
+	    $awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{result_sysstats}." >> data/".$mainkey.".csv \n";
+	    if($plotstring ne ""){
+		$gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString,$statstring,$statstringPrint,$gnuplotConf );
+	    }
 	}
     }
 
-    @StatsToRead = ("memstats","mem_committed","swap","pgswstats");
+    #@StatsToRead = ("memstats","mem_committed","swap","pgswstats");
+    @StatsToRead =("memstats_%","memstats_used","swap","mem_committed","pgswstats");
     
     foreach my $mainkey (sort @StatsToRead ){
         $relativePosition =2;
         my $awkpositionLocal ="";
-        my $plotstring="" ;
+        my $plotstring="plot " ;
 	my $gnuplotConf;
         my $processStats = 0;
         my $processElementStats =0;
@@ -3615,10 +3635,13 @@ sub PrintSystatGnufile($$){
         my @itemAttribs;
         my $filterItemC="";
 	my $stat_root=$mainkey;
+	$statstringPrint="";
+	$statstring="";
+
 	
 
 	if(defined $cfg->{"Hwsys_".$mainkey}->{parent} && $cfg->{"Hwsys_".$mainkey}->{parent} ne ""){
-	    $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent}
+	    $stat_root=$cfg->{"Hwsys_".$mainkey}->{parent};
 	}
 
         foreach my $key (sort keys %{$statHeaderMap->{$stat_root}})
@@ -3656,6 +3679,8 @@ sub PrintSystatGnufile($$){
 		     }
 		 }
                    
+		my $varName ="";
+		
                 if($position > 2 && $processElementStats == 1){
                     if($awkpositionLocal eq "")
                     {
@@ -3665,26 +3690,44 @@ sub PrintSystatGnufile($$){
                     {
                         $awkpositionLocal = $awkpositionLocal.",\$".$position;
                     }
-                
-		    if ($plotstring eq "" )
-		    {
-			$plotstring="plot \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls ".($relativePosition-1);
+	    
+		    if($key ne ""){
+			$varName=$key;
+			$varName=~  s/_([a-z|A-Z])/\U$1/g ;
+			$varName=~  s/_/ /g ;
 		    }
-		    else
-		    {
-			$plotstring=$plotstring.", \"".$mainkey.".csv\" u 1:(\$".$relativePosition++."/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls ".($relativePosition-1);
-		    }
+
+
+		    if($plotstring ne "plot "){
+			$plotstring = $plotstring.", ";
+		    }                
+
+		    $statstring=$statstring."stats \"".$mainkey.".csv\" using 1:(\$$relativePosition) name 'stat_col".$relativePosition."' nooutput \n";
+		    $statstringPrint=$statstringPrint."col".
+		    $relativePosition." = sprintf('%28s |Min:%10.1f |Max:%10.1f |Avg:%10.1f |StdDev:%10.1f |Upper75:%10.1f', '$varName',stat_col".$relativePosition."_min_y, stat_col"
+			.$relativePosition."_max_y, stat_col"
+			.$relativePosition."_mean_y, stat_col"
+			.$relativePosition."_stddev_y, stat_col"
+			.$relativePosition."_up_quartile_y)\n";
+
+#$plotstring=$plotstring.", \"".$gnuparam->{title}.".csv\" u 1:(\$(column('.$varName.'))/".$Param->{interval}.") $chartOptions w l ls ".($relativePosition)." notitle,  1/0 ls ".($relativePosition +100)." title col".($relativePosition) ;		    		
+		    #$plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\(column('$varName'))/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls "
+		    #.($relativePosition)." notitle ,1/0 ls ".($relativePosition +100)." title col".($relativePosition);
+
+		    $plotstring=$plotstring." \"".$mainkey.".csv\" u 1:(\$$relativePosition/".$Param->{interval}.")  w ". $itemAttribs[0]. " ls "
+		    .($relativePosition)." notitle ,1/0 ls ".($relativePosition +100)." title col".($relativePosition);
+		    $relativePosition++ ; 
 		}
-                #++$position ;
+                #$position ;
 	    
         }
         if($Param->{debug} >0 ){
 	    print "\n\n#----------------$mainkey--------------------\n";
-	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+	    print "awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkposition."}' ".$Param->{result_sysstats}." >> data/".$mainkey.".csv \n";
 	}
-	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{stattfile}." >> ".$mainkey.".csv \n";
+	$awkposition = $awkposition."awk -F , '{printf(\"\\\"%s %s\\\" \",\$1,\$2) ;print ".$awkpositionLocal."}' ".$Param->{result_sysstats}." >> data/".$mainkey.".csv \n";
         if($plotstring ne ""){
-	    $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString);
+	    $gnuconf = $gnuconf.GnuPlotConfStats($mainkey,$plotstring,$filterString,$statstring,$statstringPrint,$gnuplotConf);
 	}
 
     }
@@ -3697,12 +3740,68 @@ sub PrintSystatGnufile($$){
     #print $gnuconf;
 }
 
-sub GnuPlotConfStats($$$){
-    my ($mainkey, $plotstring, $gnuconf);
+sub GnuPlotConfStats($$$$$$){
+    my ($mainkey, $plotstring, $filterString,$statstring, $statstringPrint,$gnuplotConf);
     $mainkey = shift;
     $plotstring = shift;
-    my $filterString = shift;
-            my $style = <<"GNU_STYLE";
+    $filterString = shift;
+    $statstring = shift;
+    $statstringPrint = shift;
+    $gnuplotConf = shift;
+    my $gnuconf="";
+    
+
+    if( $mainkey ne "" &&  $plotstring ne "")
+    {
+	my $title = $mainkey;
+	$title=~ s/_/ /g;
+	
+	$gnuconf=$gnuconf."\n#------------$title------------------------\n";
+        $gnuconf=$gnuconf."\n#--FILTERED $filterString------\n";
+	$gnuconf=$gnuconf."reset \n";
+	$gnuconf=$gnuconf.<<"GNUCONF";
+	set title "$title"
+set xlabel "Time" offset 0,4,0
+set ylabel "$gnuplotConf->{yaxis}" offset 12,0,0
+set datafile separator " "
+
+$statstring
+
+set timefmt "%Y-%m-%d %H:%M:%S"
+#set logscale # turn on double logarithmic plotting
+#set logscale y # for y-axis only
+#set logscale x
+#set xdtics 24
+
+set xrange [0:]
+set yrange [0:]
+
+set lmargin at screen 0.1
+set rmargin at screen 0.91
+#set tmargin at screen 0.91
+set grid
+set border 3
+set xdata time
+#set key autotitle columnhead
+
+set term pngcairo size 1900,950 noenhanced
+set termoption font "Courier,12"
+set output "$mainkey.png"
+
+
+set border 3
+set auto x
+set format x "%m-%d %H:%M:%S"
+set format y "%20.0f"
+set xtics rotate by -45 autofreq 
+
+set mxtics 4
+set ytics
+set mytics 5
+
+ 
+
+
 	    set style line 1 lt 1 lw 1 pt 7 ps 0.8  lc rgbcolor  "#8DB600"
 	    set style line 2 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#B3446C"
 	    set style line 3 lt 1 lw 1 pt 7 ps 0.8 lc rgbcolor  "#F3C300"
@@ -3746,58 +3845,13 @@ sub GnuPlotConfStats($$$){
 	    set style line 119 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#E25822"
 	    set style line 120 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#654522"
 	    set style line 121 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#F2F3F4"
-	    set style line 122 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#222222
-GNU_STYLE
+	    set style line 122 lt 1 lw 10 pt 7 ps 0.8 lc rgbcolor "#222222"
 
-    if( $mainkey ne "" &&  $plotstring ne "")
-    {
-	my $title = $mainkey;
-	$title=~ s/_/ /g;
-	
-	$gnuconf=$gnuconf."\n#------------$title------------------------\n";
-        $gnuconf=$gnuconf."\n#--FILTERED $filterString------\n";
-	$gnuconf=$gnuconf."reset \n";
-	$gnuconf=$gnuconf."set title \"".$title."\"\n";
-	$gnuconf=$gnuconf."set xlabel \"time\"\n";
-	#$gnuconf=$gnuconf."set ylabel \"".$gnuconf->{yaxis}."\"\n";
-	$gnuconf=$gnuconf."set ylabel \"instances\"\n";
-	$gnuconf=$gnuconf."set datafile separator \" \"\n\n";
-	$gnuconf=$gnuconf."set timefmt \"%Y-%m-%d %H:%M:%S\"\n";
-	$gnuconf=$gnuconf."#set logscale # turn on double logarithmic plotting\n";
-	$gnuconf=$gnuconf."#set logscale y # for y-axis only\n";
-	$gnuconf=$gnuconf."#set logscale x\n";
-	$gnuconf=$gnuconf."#set xdtics 24\n\n";
-	$gnuconf=$gnuconf."set autoscale xfixmin\n";
-	$gnuconf=$gnuconf."set autoscale xfixmax\n";
-	$gnuconf=$gnuconf."set xrange [0:]\n";
-	$gnuconf=$gnuconf."set yrange [1:]\n\n";
-            
-	$gnuconf=$gnuconf."set lmargin at screen 0.10\n";
-	$gnuconf=$gnuconf."set rmargin at screen 0.90\n";
-	$gnuconf=$gnuconf."set tmargin at screen 0.91\n";
-
-        $gnuconf=$gnuconf."set grid\n";
-	$gnuconf=$gnuconf."set border 1\n";
-	$gnuconf=$gnuconf."set xdata time\n";
-	$gnuconf=$gnuconf."set key autotitle columnhead\n\n";
-
-        $gnuconf=$gnuconf."set term pngcairo size 1900,950 font \"Courier:name 6:size\"\n";
-        $gnuconf=$gnuconf."#set terminal x11 size 1149,861\n";
-        $gnuconf=$gnuconf."set output \"".$mainkey.".png\"\n\n";
-
-	$gnuconf=$gnuconf."set auto x\n";
-	$gnuconf=$gnuconf."set format x \"%m-%d %H:%M:%S\"\n";
-        $gnuconf=$gnuconf."set format y \"%20.0f\"\n";
-	$gnuconf=$gnuconf."set xtics rotate by -45 autofreq font \"Courier:name 6:size\"\n";
-        $gnuconf=$gnuconf."set mxtics 4\n";
-	$gnuconf=$gnuconf."set ytics\n";
-	$gnuconf=$gnuconf."set mytics 5\n";
-	$gnuconf=$gnuconf."set termoption font \"Courier:name 6:size\"\n\n";
-	$gnuconf=$gnuconf."set key center bottom outside vertical samplen 10 spacing 1.1\n\n";
-	
-	$gnuconf=$gnuconf.$style."\n\n";
-		
+set key center bottom outside vertical samplen 10 spacing 1.1 box 3 
+GNUCONF
+	$gnuconf=$gnuconf.$statstringPrint."\n\n";
 	$gnuconf=$gnuconf.$plotstring."\n\n";
+
 	if($Param->{debug} >0 ){
 	    print $gnuconf;
 	}
